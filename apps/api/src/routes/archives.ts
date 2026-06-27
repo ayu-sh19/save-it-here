@@ -1,0 +1,76 @@
+import { Hono } from 'hono';
+import { prisma as db, MOCK_USER_ID } from '../lib/db';
+import { ArchiveItemSchema } from '@save-it-here/shared';
+
+const archives = new Hono();
+
+// GET all archive items
+archives.get('/', async (c) => {
+  try {
+    const items = await db.archiveItem.findMany({
+      where: { userId: MOCK_USER_ID },
+      orderBy: { updatedAt: 'desc' },
+      include: {
+        tags: true,
+        media: true,
+      },
+    });
+    return c.json({ success: true, data: items });
+  } catch (error) {
+    console.error('Failed to fetch archive items:', error);
+    return c.json({ success: false, error: 'Internal Server Error' }, 500);
+  }
+});
+
+// POST new archive item
+archives.post('/', async (c) => {
+  try {
+    const body = await c.req.json();
+    const result = ArchiveItemSchema.safeParse(body);
+    
+    if (!result.success) {
+      return c.json({ success: false, error: result.error.errors }, 400);
+    }
+
+    const { platform, url, authorHandle, caption, ocrText, userCategory } = result.data;
+
+    const item = await db.archiveItem.create({
+      data: {
+        userId: MOCK_USER_ID,
+        platform,
+        url,
+        authorHandle,
+        caption,
+        ocrText,
+        userCategory,
+      },
+      include: {
+        tags: true,
+        media: true,
+      }
+    });
+
+    return c.json({ success: true, data: item }, 201);
+  } catch (error) {
+    console.error('Failed to create archive item:', error);
+    return c.json({ success: false, error: 'Internal Server Error' }, 500);
+  }
+});
+
+// DELETE archive item
+archives.delete('/:id', async (c) => {
+  try {
+    const id = c.req.param('id');
+    
+    await db.archiveItem.delete({
+      where: { id, userId: MOCK_USER_ID },
+    });
+
+    return c.json({ success: true, message: 'Archive item deleted' });
+  } catch (error) {
+    console.error('Failed to delete archive item:', error);
+    return c.json({ success: false, error: 'Internal Server Error' }, 500);
+  }
+});
+
+export default archives;

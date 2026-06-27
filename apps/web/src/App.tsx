@@ -4,6 +4,9 @@ import { Dashboard } from './pages/Dashboard';
 import { Ideas } from './pages/Ideas';
 import { Wishlist } from './pages/Wishlist';
 import { Archives } from './pages/Archives';
+import { Accounts } from './pages/Accounts';
+import { Lending } from './pages/Lending';
+import { Investments } from './pages/Investments';
 
 function App() {
   return (
@@ -12,6 +15,9 @@ function App() {
         <Route index element={<Dashboard />} />
         
         {/* Phase 5 Routes */}
+        <Route path="accounts" element={<Accounts />} />
+        <Route path="lending" element={<Lending />} />
+        <Route path="investments" element={<Investments />} />
         <Route path="ideas" element={<Ideas />} />
         <Route path="wishlist" element={<Wishlist />} />
         <Route path="archive/ig" element={<Archives />} />

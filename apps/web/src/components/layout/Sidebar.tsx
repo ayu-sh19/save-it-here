@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, WalletCards, TrendingUp, Lightbulb, Grid3X3, Bookmark, Heart, Film, BookOpen } from 'lucide-react';
+import { LayoutDashboard, WalletCards, TrendingUp, Lightbulb, Grid3X3, Heart, Film, BookOpen } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 const SECTIONS = [
@@ -12,8 +12,9 @@ const SECTIONS = [
   {
     header: 'Finances',
     items: [
-      { label: 'Transactions', icon: WalletCards, path: '/transactions' },
-      { label: 'Budget', icon: TrendingUp, path: '/budget' },
+      { label: 'Accounts & Budgets', icon: WalletCards, path: '/accounts' },
+      { label: 'Lending', icon: TrendingUp, path: '/lending' },
+      { label: 'Investments', icon: TrendingUp, path: '/investments' },
     ]
   },
   {

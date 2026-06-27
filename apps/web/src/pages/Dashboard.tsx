@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchTransactions, fetchTransactionSummary } from '../lib/api';
+import { fetchTransactions, fetchDashboard } from '../lib/api';
 import { MarqueeTicker } from '../components/dashboard/MarqueeTicker';
 import { SummaryBlock } from '../components/dashboard/SummaryBlock';
 import { BudgetGauge } from '../components/dashboard/BudgetGauge';
@@ -28,9 +28,9 @@ function PlaceholderCard({ title, icon: Icon, to }: { title: string; icon: any; 
 }
 
 export function Dashboard() {
-  const { data: summary, isLoading: isSummaryLoading } = useQuery({
-    queryKey: ['transactions-summary'],
-    queryFn: fetchTransactionSummary,
+  const { data: dashboard, isLoading: isDashboardLoading } = useQuery({
+    queryKey: ['dashboard-financial'],
+    queryFn: fetchDashboard,
   });
 
   const { data: transactions, isLoading: isTxnsLoading } = useQuery({
@@ -38,7 +38,7 @@ export function Dashboard() {
     queryFn: fetchTransactions,
   });
 
-  const isLoading = isSummaryLoading || isTxnsLoading;
+  const isLoading = isDashboardLoading || isTxnsLoading;
 
   if (isLoading) {
     return (
@@ -49,19 +49,21 @@ export function Dashboard() {
     );
   }
 
+  // Calculate total budget from all categories that have a budget
+  const totalBudget = dashboard?.categorySpend?.reduce((acc: number, cat: any) => acc + (cat.budgetAmount || 0), 0) || 50000;
+
   return (
     <div className="w-full max-w-5xl mx-auto pb-24 md:pb-8">
       <MarqueeTicker />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <SummaryBlock 
-          totalIncome={summary?.totalIncome || 0} 
-          totalExpense={summary?.totalExpense || 0} 
+          totalIncome={dashboard?.currentMonth?.income || 0} 
+          totalExpense={dashboard?.currentMonth?.expense || 0} 
         />
-        {/* Hardcoding budget limit for now since it's not in the DB yet */}
         <BudgetGauge 
-          spent={summary?.totalExpense || 0} 
-          limit={50000} 
+          spent={dashboard?.currentMonth?.expense || 0} 
+          limit={totalBudget > 0 ? totalBudget : 50000} 
         />
       </div>
 

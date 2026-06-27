@@ -42,7 +42,7 @@ export function IdeaCard({ idea, index }: IdeaCardProps) {
           
           <div className="flex items-center justify-between mt-auto">
             <div className="flex gap-2">
-              {idea.tags.slice(0, 2).map(tag => (
+              {idea.tags && idea.tags.map((tag: string) => (
                 <span key={tag} className="font-mono text-[10px] font-bold uppercase tracking-widest bg-[var(--ink-04)] border border-[var(--ink-15)] px-1.5 py-0.5">
                   {tag}
                 </span>

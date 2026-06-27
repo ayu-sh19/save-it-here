@@ -1,46 +1,24 @@
+import { useQuery } from '@tanstack/react-query';
 import { WishlistCard, type WishlistItem } from '../components/wishlist/WishlistCard';
-
-// MOCK DATA for Phase 5 (until API is built)
-const MOCK_WISHLIST: WishlistItem[] = [
-  {
-    id: '1',
-    title: 'Sony WH-1000XM6 Headphones',
-    price: 24999,
-    category: 'Product',
-    status: 'CONSIDERING',
-    imageUrl: 'https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=600&h=450&fit=crop',
-    tags: ['Tech', 'Audio']
-  },
-  {
-    id: '2',
-    title: 'Designing Data-Intensive Applications',
-    price: 599,
-    category: 'Book',
-    status: 'SAVED',
-    imageUrl: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=600&h=450&fit=crop',
-    tags: ['Learning', 'System Design']
-  },
-  {
-    id: '3',
-    title: 'Oppenheimer (2023)',
-    rating: 8.5,
-    category: 'Movie',
-    status: 'CONSUMED',
-    imageUrl: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?w=600&h=450&fit=crop',
-    tags: ['Nolan', 'Drama']
-  },
-  {
-    id: '4',
-    title: 'Mechanical Keyboard (Keychron K2)',
-    price: 8500,
-    category: 'Product',
-    status: 'PLANNED',
-    imageUrl: 'https://images.unsplash.com/photo-1595225476474-87563907a212?w=600&h=450&fit=crop',
-    tags: ['Tech', 'Setup']
-  }
-];
+import { fetchWishlist } from '../lib/api';
 
 export function Wishlist() {
+  const { data: items, isLoading } = useQuery({
+    queryKey: ['wishlist'],
+    queryFn: fetchWishlist,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[50vh]">
+        <div className="w-8 h-8 border-4 border-[var(--ink)] border-t-[var(--crimson)] rounded-full animate-spin"></div>
+        <p className="mt-4 font-mono text-sm tracking-widest uppercase">Loading Wishlist...</p>
+      </div>
+    );
+  }
+
+  const wishlistItems: WishlistItem[] = items || [];
+
   return (
     <div className="w-full max-w-6xl mx-auto pb-12">
       <div className="flex items-center justify-between mb-8 pb-4 border-b-2 border-[var(--ink)]">
@@ -58,9 +36,15 @@ export function Wishlist() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {MOCK_WISHLIST.map(item => (
-          <WishlistCard key={item.id} item={item} />
-        ))}
+        {wishlistItems.length === 0 ? (
+          <div className="col-span-full p-12 text-center border-2 border-dashed border-[var(--ink-30)] font-mono text-[var(--ink-60)]">
+            Your wishlist is empty. Add a product URL to start!
+          </div>
+        ) : (
+          wishlistItems.map(item => (
+            <WishlistCard key={item.id} item={item} />
+          ))
+        )}
       </div>
     </div>
   );

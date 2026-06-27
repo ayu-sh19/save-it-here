@@ -34,6 +34,8 @@ model Account {
   type        String   // "BANK", "WALLET", "CASH", "CREDIT_CARD"
   balance     Float    @default(0.0)
   currency    String   @default("INR")
+  icon        String?
+  color       String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -43,16 +45,17 @@ model Account {
 }
 
 model Category {
-  id          String   @id @default(cuid())
-  userId      String
-  name        String
-  type        String   // "EXPENSE", "INCOME"
-  color       String?
-  icon        String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String        @id @default(cuid())
+  userId       String
+  name         String
+  type         String        // "EXPENSE", "INCOME"
+  color        String?
+  icon         String?
+  budgetAmount Float?        // Optional monthly budget
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   subCategories SubCategory[]
   transactions  Transaction[]
 }

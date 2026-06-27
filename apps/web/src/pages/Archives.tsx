@@ -1,57 +1,7 @@
 import Masonry from 'react-masonry-css';
+import { useQuery } from '@tanstack/react-query';
 import { ArchiveCard, type ArchiveItem } from '../components/archives/ArchiveCard';
-
-// MOCK DATA for Phase 5
-const MOCK_ARCHIVES: ArchiveItem[] = [
-  {
-    id: '1',
-    platform: 'Instagram',
-    handle: 'design_inspo',
-    content: 'Brutalist architecture meets modern web design. The raw, unpolished look is taking over 2026. What do you think of these stark borders?',
-    imageUrl: 'https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=600&h=800&fit=crop', // Tall image
-    url: '#',
-    isDeadLink: false,
-    tags: ['ui', 'brutalism', 'design']
-  },
-  {
-    id: '2',
-    platform: 'Twitter',
-    handle: 'tech_guru',
-    content: 'Just launched my new open source project! It uses React, Hono, and Prisma. The developer experience is absolutely incredible. Check out the repo.',
-    url: '#',
-    isDeadLink: false,
-    tags: ['react', 'hono', 'typescript']
-  },
-  {
-    id: '3',
-    platform: 'Instagram',
-    handle: 'foodie_travels',
-    content: 'Found this hidden gem in Tokyo. The ramen here is out of this world! 🍜✨',
-    imageUrl: 'https://images.unsplash.com/photo-1552611052-33e04de081de?w=600&h=600&fit=crop', // Square image
-    url: '#',
-    isDeadLink: true,
-    tags: ['tokyo', 'ramen', 'food']
-  },
-  {
-    id: '4',
-    platform: 'Twitter',
-    handle: 'naval',
-    content: 'Play iterated games. All the returns in life, whether in wealth, relationships, or knowledge, come from compound interest.',
-    url: '#',
-    isDeadLink: false,
-    tags: ['wisdom', 'wealth']
-  },
-  {
-    id: '5',
-    platform: 'Instagram',
-    handle: 'architecture_hunter',
-    content: 'Concrete jungle. The stark contrasts and heavy shadows create a dramatic atmosphere in this modern museum space.',
-    imageUrl: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=600&h=900&fit=crop', // Very tall image
-    url: '#',
-    isDeadLink: false,
-    tags: ['architecture', 'concrete', 'brutalism']
-  }
-];
+import { fetchArchives } from '../lib/api';
 
 const breakpointColumnsObj = {
   default: 4,
@@ -61,6 +11,22 @@ const breakpointColumnsObj = {
 };
 
 export function Archives() {
+  const { data: items, isLoading } = useQuery({
+    queryKey: ['archives'],
+    queryFn: fetchArchives,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[50vh]">
+        <div className="w-8 h-8 border-4 border-[var(--ink)] border-t-[var(--crimson)] rounded-full animate-spin"></div>
+        <p className="mt-4 font-mono text-sm tracking-widest uppercase">Loading Archives...</p>
+      </div>
+    );
+  }
+
+  const archiveItems: ArchiveItem[] = items || [];
+
   return (
     <div className="w-full max-w-7xl mx-auto pb-12">
       <div className="flex items-center justify-between mb-8 pb-4 border-b-2 border-[var(--ink)] px-4">
@@ -74,15 +40,21 @@ export function Archives() {
         </div>
       </div>
 
-      <Masonry
-        breakpointCols={breakpointColumnsObj}
-        className="flex w-auto -ml-4"
-        columnClassName="pl-4 bg-clip-padding"
-      >
-        {MOCK_ARCHIVES.map(item => (
-          <ArchiveCard key={item.id} item={item} />
-        ))}
-      </Masonry>
+      {archiveItems.length === 0 ? (
+        <div className="p-12 text-center border-2 border-dashed border-[var(--ink-30)] font-mono text-[var(--ink-60)] mx-4">
+          Your archive is empty. Add a social media link to save it forever.
+        </div>
+      ) : (
+        <Masonry
+          breakpointCols={breakpointColumnsObj}
+          className="flex w-auto -ml-4"
+          columnClassName="pl-4 bg-clip-padding"
+        >
+          {archiveItems.map(item => (
+            <ArchiveCard key={item.id} item={item} />
+          ))}
+        </Masonry>
+      )}
     </div>
   );
 }

@@ -33,7 +33,7 @@ export function Ideas() {
       }
       return { previousIdeas };
     },
-    onError: (err, newTodo, context) => {
+    onError: (_, __, context) => {
       if (context?.previousIdeas) {
         queryClient.setQueryData(['ideas'], context.previousIdeas);
       }

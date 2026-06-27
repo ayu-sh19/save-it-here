@@ -33,3 +33,38 @@ export const updateIdea = async ({ id, updates }: { id: string; updates: Partial
   const { data } = await api.patch(`/ideas/${id}`, updates);
   return data.data;
 };
+
+export const fetchWishlist = async () => {
+  const { data } = await api.get('/wishlist');
+  return data.data;
+};
+
+export const fetchArchives = async () => {
+  const { data } = await api.get('/archives');
+  return data.data;
+};
+
+export const fetchDashboard = async () => {
+  const { data } = await api.get('/dashboard/financial');
+  return data.data;
+};
+
+export const fetchAccounts = async () => {
+  const { data } = await api.get('/accounts');
+  return data.data;
+};
+
+export const fetchCategories = async () => {
+  const { data } = await api.get('/categories');
+  return data.data;
+};
+
+export const fetchLending = async () => {
+  const { data } = await api.get('/lending');
+  return data.data;
+};
+
+export const fetchInvestments = async () => {
+  const { data } = await api.get('/investments');
+  return data.data;
+};
