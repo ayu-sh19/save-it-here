@@ -54,8 +54,33 @@ export const fetchAccounts = async () => {
   return data.data;
 };
 
+export const updateAccount = async (id: string, account: any) => {
+  const { data } = await api.put(`/accounts/${id}`, account);
+  return data.data;
+};
+
+export const deleteAccount = async (id: string) => {
+  const { data } = await api.delete(`/accounts/${id}`);
+  return data.data;
+};
+
 export const fetchCategories = async () => {
   const { data } = await api.get('/categories');
+  return data.data;
+};
+
+export const updateCategory = async (id: string, category: any) => {
+  const { data } = await api.put(`/categories/${id}`, category);
+  return data.data;
+};
+
+export const updateCategoryBudget = async (id: string, budgetAmount: number) => {
+  const { data } = await api.put(`/categories/${id}/budget`, { budgetAmount });
+  return data.data;
+};
+
+export const deleteCategory = async (id: string) => {
+  const { data } = await api.delete(`/categories/${id}`);
   return data.data;
 };
 
@@ -66,5 +91,55 @@ export const fetchLending = async () => {
 
 export const fetchInvestments = async () => {
   const { data } = await api.get('/investments');
+  return data.data;
+};
+
+export const createInvestmentAccount = async (account: any) => {
+  const { data } = await api.post('/investments/accounts', account);
+  return data.data;
+};
+
+export const createSavingsGoal = async (goal: any) => {
+  const { data } = await api.post('/investments/goals', goal);
+  return data.data;
+};
+
+export const createTransaction = async (transaction: Partial<Transaction>) => {
+  const { data } = await api.post('/transactions', transaction);
+  return data.data;
+};
+
+export const createWishlist = async (item: any) => {
+  const { data } = await api.post('/wishlist', item);
+  return data.data;
+};
+
+export const createAccount = async (account: any) => {
+  const { data } = await api.post('/accounts', account);
+  return data.data;
+};
+
+export const createCategory = async (category: any) => {
+  const { data } = await api.post('/categories', category);
+  return data.data;
+};
+
+export const createLending = async (lending: any) => {
+  const { data } = await api.post('/lending', lending);
+  return data.data;
+};
+
+export const searchGlobal = async (query: string) => {
+  const { data } = await api.get(`/search/global?q=${encodeURIComponent(query)}`);
+  return data;
+};
+
+export const discoverMovies = async (query: string) => {
+  const { data } = await api.get(`/discover/movies?q=${encodeURIComponent(query)}`);
+  return data.data;
+};
+
+export const discoverBooks = async (query: string) => {
+  const { data } = await api.get(`/discover/books?q=${encodeURIComponent(query)}`);
   return data.data;
 };

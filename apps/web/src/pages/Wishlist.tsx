@@ -1,12 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { WishlistCard, type WishlistItem } from '../components/wishlist/WishlistCard';
 import { fetchWishlist } from '../lib/api';
+import { useQuickAddStore } from '../store/quickAdd';
 
 export function Wishlist() {
   const { data: items, isLoading } = useQuery({
     queryKey: ['wishlist'],
     queryFn: fetchWishlist,
   });
+  
+  const { openQuickAdd } = useQuickAddStore();
 
   if (isLoading) {
     return (
@@ -29,7 +32,10 @@ export function Wishlist() {
           <button className="bg-[var(--white)] text-[var(--ink)] px-4 py-2 font-display text-xs font-bold tracking-[0.1em] uppercase border-2 border-[var(--ink)] shadow-[3px_3px_0_var(--ink)] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_var(--ink)] transition-all">
             Filter ▾
           </button>
-          <button className="bg-[var(--crimson)] text-[var(--paper)] px-4 py-2 font-display text-xs font-bold tracking-[0.1em] uppercase border-2 border-[var(--ink)] shadow-[3px_3px_0_var(--ink)] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_var(--ink)] transition-all">
+          <button 
+            onClick={() => openQuickAdd('wishlist')}
+            className="bg-[var(--crimson)] text-[var(--paper)] px-4 py-2 font-display text-xs font-bold tracking-[0.1em] uppercase border-2 border-[var(--ink)] shadow-[3px_3px_0_var(--ink)] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_var(--ink)] transition-all"
+          >
             + Add URL
           </button>
         </div>

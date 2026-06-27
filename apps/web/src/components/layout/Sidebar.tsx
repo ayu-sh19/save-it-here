@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, WalletCards, TrendingUp, Lightbulb, Grid3X3, Heart, Film, BookOpen } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { useQuickAddStore } from '../../store/quickAdd';
 
 const SECTIONS = [
   {
@@ -36,6 +37,7 @@ const SECTIONS = [
 
 export function Sidebar() {
   const location = useLocation();
+  const { openQuickAdd } = useQuickAddStore();
 
   return (
     <div className="fixed top-[60px] left-0 bottom-0 w-[260px] bg-[var(--paper-soft)] border-r-[3px] border-[var(--ink)] py-6 overflow-y-auto z-40 hidden md:block">
@@ -68,7 +70,10 @@ export function Sidebar() {
       ))}
 
       {/* FAB - Quick Add positioned at bottom of sidebar on desktop */}
-      <button className="fixed bottom-6 left-[102px] w-14 h-14 bg-[var(--crimson)] text-[var(--paper)] border-[3px] border-[var(--ink)] shadow-[4px_4px_0_var(--ink)] flex items-center justify-center text-2xl cursor-pointer z-45 transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--ink)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0_var(--ink)]">
+      <button 
+        onClick={() => openQuickAdd()}
+        className="fixed bottom-6 left-[102px] w-14 h-14 bg-[var(--crimson)] text-[var(--paper)] border-[3px] border-[var(--ink)] shadow-[4px_4px_0_var(--ink)] flex items-center justify-center text-2xl cursor-pointer z-45 transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--ink)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0_var(--ink)]"
+      >
         +
       </button>
     </div>

@@ -72,4 +72,21 @@ accounts.put('/:id', async (c) => {
   }
 });
 
+// DELETE account
+accounts.delete('/:id', async (c) => {
+  try {
+    const id = c.req.param('id');
+    
+    // Prisma will restrict delete if there are foreign keys, but we assume cascade or manual handling.
+    await db.account.delete({
+      where: { id, userId: MOCK_USER_ID },
+    });
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Failed to delete account:', error);
+    return c.json({ success: false, error: 'Internal Server Error' }, 500);
+  }
+});
+
 export default accounts;

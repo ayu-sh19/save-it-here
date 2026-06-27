@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Save It Here - Second Brain",
+  "version": "1.0.0",
+  "description": "Quickly save ideas, links, and snippets to your Second Brain.",
+  "action": {
+    "default_popup": "index.html"
+  },
+  "permissions": [
+    "activeTab",
+    "storage",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "http://localhost:3000/*"
+  ],
+  "background": {
+    "service_worker": "src/background/index.ts",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.instagram.com/*", "*://*.twitter.com/*", "*://x.com/*"],
+      "js": ["src/content/index.ts"]
+    }
+  ],
+  "icons": {
+    "16": "public/icon-16.png",
+    "48": "public/icon-48.png",
+    "128": "public/icon-128.png"
+  }
+}

@@ -1,12 +1,50 @@
-import { useQuery } from '@tanstack/react-query';
-import { fetchInvestments } from '../lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchInvestments, createInvestmentAccount, createSavingsGoal } from '../lib/api';
 import { TrendingUp, Target, Plus } from 'lucide-react';
 
 export function Investments() {
+  const queryClient = useQueryClient();
   const { data: investmentsData, isLoading } = useQuery({
     queryKey: ['investments'],
     queryFn: fetchInvestments,
   });
+
+  const invMutation = useMutation({
+    mutationFn: createInvestmentAccount,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['investments'] })
+  });
+
+  const goalMutation = useMutation({
+    mutationFn: createSavingsGoal,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['investments'] })
+  });
+
+  const handleAddGoal = () => {
+    const name = window.prompt("Enter savings goal name:");
+    if (!name) return;
+    const target = window.prompt("Enter target amount (₹):");
+    if (!target) return;
+    
+    goalMutation.mutate({
+      name,
+      targetAmount: parseFloat(target),
+      color: 'var(--gold)'
+    });
+  };
+
+  const handleAddInvestment = () => {
+    const name = window.prompt("Enter investment account name:");
+    if (!name) return;
+    const type = window.prompt("Enter type (e.g. MUTUAL_FUND, STOCK):", "MUTUAL_FUND");
+    if (!type) return;
+    const initialValue = window.prompt("Enter current/initial value (₹):");
+    
+    invMutation.mutate({
+      name,
+      type,
+      initialValue: parseFloat(initialValue || '0')
+    });
+  };
 
   if (isLoading) {
     return (
@@ -32,10 +70,10 @@ export function Investments() {
           <TrendingUp className="w-6 h-6" /> Investments & Goals
         </h1>
         <div className="flex gap-2">
-          <button className="flex items-center gap-1 font-mono text-xs font-bold uppercase tracking-widest text-[var(--ink)] border-2 border-[var(--ink)] px-2 py-1 shadow-[2px_2px_0_var(--ink)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[0_0_0_var(--ink)] transition-all bg-[var(--paper-soft)]">
+          <button onClick={handleAddGoal} className="flex items-center gap-1 font-mono text-xs font-bold uppercase tracking-widest text-[var(--ink)] border-2 border-[var(--ink)] px-2 py-1 shadow-[2px_2px_0_var(--ink)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[0_0_0_var(--ink)] transition-all bg-[var(--paper-soft)]">
             <Plus className="w-3 h-3" /> Add Goal
           </button>
-          <button className="flex items-center gap-1 font-mono text-xs font-bold uppercase tracking-widest text-[var(--ink)] border-2 border-[var(--ink)] px-2 py-1 shadow-[2px_2px_0_var(--ink)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[0_0_0_var(--ink)] transition-all bg-[var(--gold)]">
+          <button onClick={handleAddInvestment} className="flex items-center gap-1 font-mono text-xs font-bold uppercase tracking-widest text-[var(--ink)] border-2 border-[var(--ink)] px-2 py-1 shadow-[2px_2px_0_var(--ink)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[0_0_0_var(--ink)] transition-all bg-[var(--gold)]">
             <Plus className="w-3 h-3" /> Add Investment
           </button>
         </div>

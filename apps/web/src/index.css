@@ -19,6 +19,28 @@
 }
 
 @layer base {
+  :root {
+    --paper: #F4EBD7;
+    --paper-soft: #FDFBF7;
+    --ink: #1A1108;
+    --ink-04: rgba(26, 17, 8, 0.04);
+    --ink-15: rgba(26, 17, 8, 0.15);
+    --ink-30: rgba(26, 17, 8, 0.3);
+    --ink-60: rgba(26, 17, 8, 0.6);
+    --crimson: #8B1A1A;
+    --gold: #C9A227;
+    --blue: #2A4365;
+    --success: #2F855A;
+    --status-success: #2F855A;
+    --status-success-bg: #F0FFF4;
+    --status-warning: #C9A227;
+    --status-warning-bg: #FFFFF0;
+    --status-error: #8B1A1A;
+    --status-info: #2A4365;
+    --status-info-bg: #EBF8FF;
+    --white: #FFFFFF;
+  }
+
   body {
     background-color: var(--color-paper);
     color: var(--color-ink);

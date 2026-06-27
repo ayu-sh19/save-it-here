@@ -62,13 +62,29 @@ export function WishlistCard({ item }: WishlistCardProps) {
           ))}
         </div>
 
-        <div className="mt-auto pt-4 border-t border-[var(--ink-15)]">
+        <div className="mt-auto pt-4 border-t border-[var(--ink-15)] flex justify-between items-center">
           <span className={cn(
             "inline-block px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] border-2",
             statusClass
           )}>
             STATUS: {item.status}
           </span>
+          {item.price && item.status !== 'PURCHASED' && (
+            <button 
+              onClick={() => {
+                // @ts-ignore - store imported dynamically to avoid circular dependencies if any
+                import('../../store/quickAdd').then(({ useQuickAddStore }) => {
+                  useQuickAddStore.getState().openQuickAdd('transaction', {
+                    txAmount: item.price?.toString(),
+                    txMerchant: item.title,
+                  });
+                });
+              }}
+              className="text-[10px] font-bold uppercase tracking-widest bg-[var(--crimson)] text-white px-2 py-1 border-2 border-[var(--ink)] shadow-[2px_2px_0_var(--ink)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all"
+            >
+              Convert to Expense
+            </button>
+          )}
         </div>
       </div>
     </div>

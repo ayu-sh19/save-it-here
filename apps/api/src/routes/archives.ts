@@ -22,6 +22,23 @@ archives.get('/', async (c) => {
   }
 });
 
+// GET check if url exists in archives
+archives.get('/check-duplicate', async (c) => {
+  try {
+    const url = c.req.query('url');
+    if (!url) {
+      return c.json({ success: false, error: 'URL is required' }, 400);
+    }
+    const item = await db.archiveItem.findFirst({
+      where: { userId: MOCK_USER_ID, url },
+    });
+    return c.json({ success: true, isDuplicate: !!item, data: item });
+  } catch (error) {
+    console.error('Failed to check duplicate:', error);
+    return c.json({ success: false, error: 'Internal Server Error' }, 500);
+  }
+});
+
 // POST new archive item
 archives.post('/', async (c) => {
   try {

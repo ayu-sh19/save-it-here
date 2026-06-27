@@ -11,6 +11,9 @@ import categoriesRouter from './routes/categories'
 import dashboardRouter from './routes/dashboard'
 import lendingRouter from './routes/lending'
 import investmentsRouter from './routes/investments'
+import metadataRouter from './routes/metadata'
+import discoverRouter from './routes/discover'
+import searchRouter from './routes/search'
 
 const app = new Hono()
 
@@ -32,6 +35,9 @@ app.route('/api/v1/categories', categoriesRouter)
 app.route('/api/v1/dashboard', dashboardRouter)
 app.route('/api/v1/lending', lendingRouter)
 app.route('/api/v1/investments', investmentsRouter)
+app.route('/api/v1/metadata', metadataRouter)
+app.route('/api/v1/discover', discoverRouter)
+app.route('/api/v1/search', searchRouter)
 
 const port = 3000
 console.log(`Server is running on port ${port}`)

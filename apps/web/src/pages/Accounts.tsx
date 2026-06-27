@@ -1,8 +1,11 @@
-import { useQuery } from '@tanstack/react-query';
-import { fetchAccounts, fetchCategories } from '../lib/api';
-import { Wallet, PiggyBank, CreditCard, Plus } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchAccounts, fetchCategories, deleteAccount, updateAccount, deleteCategory, updateCategoryBudget } from '../lib/api';
+import { Wallet, PiggyBank, CreditCard, Plus, Trash2, Edit2 } from 'lucide-react';
+import { useQuickAddStore } from '../store/quickAdd';
 
 export function Accounts() {
+  const queryClient = useQueryClient();
+  const openQuickAdd = useQuickAddStore(state => state.openQuickAdd);
   const { data: accounts, isLoading: isAccountsLoading } = useQuery({
     queryKey: ['accounts'],
     queryFn: fetchAccounts,
@@ -12,6 +15,58 @@ export function Accounts() {
     queryKey: ['categories'],
     queryFn: fetchCategories,
   });
+
+  const delAccountMutation = useMutation({
+    mutationFn: deleteAccount,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['accounts'] })
+  });
+
+  const updateAccountMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string, data: any }) => updateAccount(id, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['accounts'] })
+  });
+
+  const delCategoryMutation = useMutation({
+    mutationFn: deleteCategory,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['categories'] })
+  });
+
+  const updateBudgetMutation = useMutation({
+    mutationFn: ({ id, amount }: { id: string, amount: number }) => updateCategoryBudget(id, amount),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['categories'] })
+  });
+
+  const handleEditBalance = (acc: any) => {
+    const newBalance = window.prompt(`Enter new balance for ${acc.name}:`, acc.balance);
+    if (newBalance !== null) {
+      const parsed = parseFloat(newBalance);
+      if (!isNaN(parsed)) {
+        updateAccountMutation.mutate({ id: acc.id, data: { balance: parsed } });
+      }
+    }
+  };
+
+  const handleDeleteAccount = (id: string, name: string) => {
+    if (window.confirm(`Are you sure you want to delete ${name}? This may break existing transactions.`)) {
+      delAccountMutation.mutate(id);
+    }
+  };
+
+  const handleEditBudget = (cat: any) => {
+    const newBudget = window.prompt(`Enter new budget for ${cat.name}:`, cat.budgetAmount || 0);
+    if (newBudget !== null) {
+      const parsed = parseFloat(newBudget);
+      if (!isNaN(parsed) && parsed >= 0) {
+        updateBudgetMutation.mutate({ id: cat.id, amount: parsed });
+      }
+    }
+  };
+
+  const handleDeleteCategory = (id: string, name: string) => {
+    if (window.confirm(`Are you sure you want to delete category ${name}?`)) {
+      delCategoryMutation.mutate(id);
+    }
+  };
 
   if (isAccountsLoading || isCategoriesLoading) {
     return (
@@ -38,13 +93,16 @@ export function Accounts() {
         <div>
           <div className="flex justify-between items-center mb-4">
             <h2 className="font-display text-xl font-bold uppercase border-l-4 border-[var(--crimson)] pl-3">Your Accounts</h2>
-            <button className="flex items-center gap-1 font-mono text-xs font-bold uppercase tracking-widest text-[var(--ink)] border-2 border-[var(--ink)] px-2 py-1 shadow-[2px_2px_0_var(--ink)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[0_0_0_var(--ink)] transition-all bg-[var(--gold)]">
+            <button 
+              onClick={() => openQuickAdd('account')}
+              className="flex items-center gap-1 font-mono text-xs font-bold uppercase tracking-widest text-[var(--ink)] border-2 border-[var(--ink)] px-2 py-1 shadow-[2px_2px_0_var(--ink)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[0_0_0_var(--ink)] transition-all bg-[var(--gold)]"
+            >
               <Plus className="w-3 h-3" /> Add Account
             </button>
           </div>
           <div className="space-y-4">
             {accountItems.map((acc: any) => (
-              <div key={acc.id} className="bg-[var(--paper-soft)] border-2 border-[var(--ink)] shadow-[4px_4px_0_var(--ink)] p-4 flex justify-between items-center">
+              <div key={acc.id} className="bg-[var(--paper-soft)] border-2 border-[var(--ink)] shadow-[4px_4px_0_var(--ink)] p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--ink)] transition-all gap-4">
                 <div className="flex items-center gap-3">
                   <div className="bg-[var(--ink)] text-[var(--paper)] p-2 rounded-none">
                     {acc.type === 'BANK' ? <PiggyBank className="w-5 h-5" /> : 
@@ -56,17 +114,25 @@ export function Accounts() {
                     <p className="font-mono text-[10px] text-[var(--ink-60)]">{acc.type}</p>
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="flex items-center gap-4 sm:flex-col sm:items-end sm:gap-2">
                   <p className="font-mono text-lg font-bold">
                     <span className="text-[var(--ink-60)] mr-1">₹</span>
                     {Number(acc.balance).toLocaleString()}
                   </p>
+                  <div className="flex gap-2">
+                    <button onClick={() => handleEditBalance(acc)} className="text-[var(--blue)] hover:bg-[var(--blue)] hover:text-white p-1 border border-transparent hover:border-[var(--ink)] transition-colors" title="Edit Balance">
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleDeleteAccount(acc.id, acc.name)} className="text-[var(--crimson)] hover:bg-[var(--crimson)] hover:text-white p-1 border border-transparent hover:border-[var(--ink)] transition-colors" title="Delete Account">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
             {accountItems.length === 0 && (
               <div className="p-8 text-center border-2 border-dashed border-[var(--ink-30)] font-mono text-sm text-[var(--ink-60)]">
-                No accounts set up yet.
+                No accounts set up yet. Click "Add Account" to get started.
               </div>
             )}
           </div>
@@ -76,7 +142,10 @@ export function Accounts() {
         <div>
           <div className="flex justify-between items-center mb-4">
             <h2 className="font-display text-xl font-bold uppercase border-l-4 border-[var(--blue)] pl-3">Budget Categories</h2>
-            <button className="flex items-center gap-1 font-mono text-xs font-bold uppercase tracking-widest text-[var(--ink)] border-2 border-[var(--ink)] px-2 py-1 shadow-[2px_2px_0_var(--ink)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[0_0_0_var(--ink)] transition-all bg-[var(--paper)]">
+            <button 
+              onClick={() => openQuickAdd('category')}
+              className="flex items-center gap-1 font-mono text-xs font-bold uppercase tracking-widest text-[var(--ink)] border-2 border-[var(--ink)] px-2 py-1 shadow-[2px_2px_0_var(--ink)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[0_0_0_var(--ink)] transition-all bg-[var(--paper)]"
+            >
               <Plus className="w-3 h-3" /> New
             </button>
           </div>
@@ -87,8 +156,18 @@ export function Accounts() {
                   <span className="font-display font-bold">{cat.icon || '📌'} {cat.name}</span>
                   <span className="ml-2 font-mono text-[9px] bg-[var(--ink)] text-[var(--white)] px-1.5 py-0.5 uppercase tracking-widest">{cat.type}</span>
                 </div>
-                <div className="font-mono text-sm">
-                  Budget: <span className="font-bold">{cat.budgetAmount ? `₹${cat.budgetAmount}` : 'Unset'}</span>
+                <div className="flex items-center gap-4">
+                  <div className="font-mono text-sm">
+                    Budget: <span className="font-bold">{cat.budgetAmount ? `₹${cat.budgetAmount}` : 'Unset'}</span>
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={() => handleEditBudget(cat)} className="text-[var(--blue)] hover:bg-[var(--blue)] hover:text-white p-1 border border-transparent hover:border-[var(--ink)] transition-colors" title="Edit Budget">
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleDeleteCategory(cat.id, cat.name)} className="text-[var(--crimson)] hover:bg-[var(--crimson)] hover:text-white p-1 border border-transparent hover:border-[var(--ink)] transition-colors" title="Delete Category">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

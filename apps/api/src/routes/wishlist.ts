@@ -20,7 +20,22 @@ wishlist.get('/', async (c) => {
     return c.json({ success: false, error: 'Internal Server Error' }, 500);
   }
 });
-
+// GET check if url exists in wishlist
+wishlist.get('/check-duplicate', async (c) => {
+  try {
+    const url = c.req.query('url');
+    if (!url) {
+      return c.json({ success: false, error: 'URL is required' }, 400);
+    }
+    const item = await db.wishlistItem.findFirst({
+      where: { userId: MOCK_USER_ID, url },
+    });
+    return c.json({ success: true, isDuplicate: !!item, data: item });
+  } catch (error) {
+    console.error('Failed to check duplicate:', error);
+    return c.json({ success: false, error: 'Internal Server Error' }, 500);
+  }
+});
 // POST new wishlist item
 wishlist.post('/', async (c) => {
   try {

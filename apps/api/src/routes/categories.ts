@@ -75,4 +75,43 @@ categories.put('/:id/budget', async (c) => {
   }
 });
 
+// PUT update category
+categories.put('/:id', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const body = await c.req.json();
+    
+    const result = CategorySchema.partial().safeParse(body);
+    if (!result.success) {
+      return c.json({ success: false, error: result.error.errors }, 400);
+    }
+
+    const item = await db.category.update({
+      where: { id, userId: MOCK_USER_ID },
+      data: result.data,
+    });
+
+    return c.json({ success: true, data: item });
+  } catch (error) {
+    console.error('Failed to update category:', error);
+    return c.json({ success: false, error: 'Internal Server Error' }, 500);
+  }
+});
+
+// DELETE category
+categories.delete('/:id', async (c) => {
+  try {
+    const id = c.req.param('id');
+    
+    await db.category.delete({
+      where: { id, userId: MOCK_USER_ID },
+    });
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Failed to delete category:', error);
+    return c.json({ success: false, error: 'Internal Server Error' }, 500);
+  }
+});
+
 export default categories;

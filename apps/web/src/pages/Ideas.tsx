@@ -3,6 +3,7 @@ import { fetchIdeas, updateIdea } from '../lib/api';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import { KanbanColumn } from '../components/ideas/KanbanColumn';
 import type { Idea } from '@save-it-here/shared';
+import { useQuickAddStore } from '../store/quickAdd';
 
 const COLUMNS = [
   { id: 'SPARK', title: '💡 Spark', status: 'SPARK' },
@@ -13,6 +14,7 @@ const COLUMNS = [
 
 export function Ideas() {
   const queryClient = useQueryClient();
+  const { openQuickAdd } = useQuickAddStore();
 
   const { data: ideas, isLoading } = useQuery({
     queryKey: ['ideas'],
@@ -76,7 +78,10 @@ export function Ideas() {
         <h1 className="font-display text-2xl font-bold uppercase tracking-wider text-[var(--ink)]">
           IDEAS
         </h1>
-        <button className="bg-[var(--ink)] text-[var(--paper)] px-4 py-2 font-display text-xs font-bold tracking-[0.1em] uppercase border-2 border-[var(--ink)] shadow-[4px_4px_0_var(--crimson)] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--crimson)] transition-all">
+        <button 
+          onClick={() => openQuickAdd('idea')}
+          className="bg-[var(--ink)] text-[var(--paper)] px-4 py-2 font-display text-xs font-bold tracking-[0.1em] uppercase border-2 border-[var(--ink)] shadow-[4px_4px_0_var(--crimson)] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--crimson)] transition-all"
+        >
           + New Idea
         </button>
       </div>
