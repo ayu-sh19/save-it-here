@@ -23,3 +23,13 @@ export const fetchIdeas = async (): Promise<Idea[]> => {
   const { data } = await api.get('/ideas');
   return data.data;
 };
+
+export const createIdea = async (idea: Partial<Idea>): Promise<Idea> => {
+  const { data } = await api.post('/ideas', idea);
+  return data.data;
+};
+
+export const updateIdea = async ({ id, updates }: { id: string; updates: Partial<Idea> }): Promise<Idea> => {
+  const { data } = await api.patch(`/ideas/${id}`, updates);
+  return data.data;
+};

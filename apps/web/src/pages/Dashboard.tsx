@@ -6,9 +6,11 @@ import { BudgetGauge } from '../components/dashboard/BudgetGauge';
 import { TransactionLedger } from '../components/dashboard/TransactionLedger';
 import { Lightbulb, Heart, Grid3X3 } from 'lucide-react';
 
-function PlaceholderCard({ title, icon: Icon }: { title: string; icon: any }) {
+import { Link } from 'react-router-dom';
+
+function PlaceholderCard({ title, icon: Icon, to }: { title: string; icon: any; to: string }) {
   return (
-    <div className="bg-[var(--paper-soft)] border-2 border-[var(--ink)] shadow-[4px_4px_0_var(--ink)] opacity-70">
+    <div className="bg-[var(--paper-soft)] border-2 border-[var(--ink)] shadow-[4px_4px_0_var(--ink)] opacity-90 transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--ink)]">
       <div className="p-3 border-b-2 border-[var(--ink)] flex items-center gap-2">
         <Icon className="w-4 h-4 text-[var(--ink)]" />
         <h3 className="font-display text-[11px] font-semibold tracking-[0.12em] uppercase text-[var(--ink)]">
@@ -16,10 +18,10 @@ function PlaceholderCard({ title, icon: Icon }: { title: string; icon: any }) {
         </h3>
       </div>
       <div className="p-6 flex flex-col items-center justify-center text-center">
-        <div className="font-mono text-xs text-[var(--ink-60)] mb-2">Coming in Phase 5</div>
-        <button className="text-[10px] uppercase font-bold tracking-widest text-[var(--crimson)] hover:underline">
-          Setup Module
-        </button>
+        <div className="font-mono text-xs text-[var(--ink-60)] mb-3">Module Ready</div>
+        <Link to={to} className="text-[10px] uppercase font-bold tracking-widest bg-[var(--crimson)] text-[var(--paper)] px-3 py-1.5 border-2 border-[var(--ink)] shadow-[2px_2px_0_var(--ink)] hover:shadow-[0_0_0_var(--ink)] hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
+          Open Module
+        </Link>
       </div>
     </div>
   );
@@ -68,9 +70,9 @@ export function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <PlaceholderCard title="Recent Ideas" icon={Lightbulb} />
-        <PlaceholderCard title="Wishlist" icon={Heart} />
-        <PlaceholderCard title="Archives" icon={Grid3X3} />
+        <PlaceholderCard title="Recent Ideas" icon={Lightbulb} to="/ideas" />
+        <PlaceholderCard title="Wishlist" icon={Heart} to="/wishlist" />
+        <PlaceholderCard title="Archives" icon={Grid3X3} to="/archive/ig" />
       </div>
     </div>
   );
