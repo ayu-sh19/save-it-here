@@ -1,2 +1,16 @@
 .agents
 .stitch
+
+node_modules
+.next/
+.turbo/
+
+.env
+
+dist
+
+# Packages
+packages/*/dist
+packages/*/node_modules
+packages/*/.turbo
+

@@ -1,0 +1,289 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts          Account[]
+  categories        Category[]
+  tags              Tag[]
+  transactions      Transaction[]
+  ideas             Idea[]
+  archiveItems      ArchiveItem[]
+  wishlistItems     WishlistItem[]
+  lendingEntries    LendingEntry[]
+  investmentAccounts InvestmentAccount[]
+  savingsGoals      SavingsGoal[]
+}
+
+model Account {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  type        String   // "BANK", "WALLET", "CASH", "CREDIT_CARD"
+  balance     Float    @default(0.0)
+  currency    String   @default("INR")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[] @relation("AccountTransactions")
+  destTransactions Transaction[] @relation("DestAccountTransactions")
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  type        String   // "EXPENSE", "INCOME"
+  color       String?
+  icon        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subCategories SubCategory[]
+  transactions  Transaction[]
+}
+
+model SubCategory {
+  id          String   @id @default(cuid())
+  categoryId  String
+  name        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category    Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+}
+
+model Tag {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  color       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions  Transaction[]  @relation("TransactionTags")
+  ideas         Idea[]         @relation("IdeaTags")
+  archiveItems  ArchiveItem[]  @relation("ArchiveTags")
+  wishlistItems WishlistItem[] @relation("WishlistTags")
+
+  @@unique([userId, name])
+}
+
+model Transaction {
+  id              String   @id @default(cuid())
+  userId          String
+  accountId       String
+  destAccountId   String?  // For transfers
+  categoryId      String?
+  subCategoryId   String?
+  wishlistItemId  String?  // If converted from wishlist
+  
+  amount          Float
+  type            String   // "EXPENSE", "INCOME", "TRANSFER", "LEND", "BORROW"
+  paymentMethod   String   // "UPI", "CASH", "CREDIT_CARD", etc.
+  date            DateTime
+  merchant        String?
+  note            String?
+  
+  // Postgres Full Text Search Vector
+  search_vector   Unsupported("tsvector")? 
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account         Account            @relation("AccountTransactions", fields: [accountId], references: [id], onDelete: Restrict)
+  destAccount     Account?           @relation("DestAccountTransactions", fields: [destAccountId], references: [id], onDelete: Restrict)
+  category        Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  subCategory     SubCategory?       @relation(fields: [subCategoryId], references: [id], onDelete: SetNull)
+  wishlistItem    WishlistItem?      @relation(fields: [wishlistItemId], references: [id], onDelete: SetNull)
+  
+  tags            Tag[]              @relation("TransactionTags")
+  splits          TransactionSplit[]
+  attachments     TransactionAttachment[]
+
+  refundOfId      String?            @unique
+  refundOf        Transaction?       @relation("Refunds", fields: [refundOfId], references: [id], onDelete: SetNull)
+  refund          Transaction?       @relation("Refunds")
+
+  @@index([date])
+  @@index([userId, type])
+}
+
+model TransactionSplit {
+  id            String   @id @default(cuid())
+  transactionId String
+  amount        Float
+  categoryId    String?
+  note          String?
+
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+}
+
+model TransactionAttachment {
+  id            String   @id @default(cuid())
+  transactionId String
+  url           String
+  type          String   // "RECEIPT", "INVOICE"
+  createdAt     DateTime @default(now())
+
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+}
+
+model Idea {
+  id            String   @id @default(cuid())
+  userId        String
+  title         String
+  content       String   @db.Text
+  status        String   // "SPARK", "EXPLORING", "IN_PROG", "DONE"
+  priority      String   // "LOW", "MEDIUM", "HIGH"
+  
+  // Postgres Full Text Search Vector
+  search_vector Unsupported("tsvector")?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tags          Tag[]    @relation("IdeaTags")
+}
+
+model ArchiveItem {
+  id            String   @id @default(cuid())
+  userId        String
+  platform      String   // "INSTAGRAM", "TWITTER", "WEB"
+  url           String
+  authorHandle  String?
+  caption       String?  @db.Text
+  ocrText       String?  @db.Text
+  userCategory  String?  // Folder/collection name
+  
+  // Postgres Full Text Search Vector
+  search_vector Unsupported("tsvector")?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media         ArchiveMedia[]
+  tags          Tag[]          @relation("ArchiveTags")
+}
+
+model ArchiveMedia {
+  id            String   @id @default(cuid())
+  archiveItemId String
+  url           String   // Local R2 URL
+  type          String   // "IMAGE", "VIDEO"
+  order         Int      @default(0)
+
+  archiveItem   ArchiveItem @relation(fields: [archiveItemId], references: [id], onDelete: Cascade)
+}
+
+model WishlistItem {
+  id            String   @id @default(cuid())
+  userId        String
+  title         String
+  description   String?  @db.Text
+  url           String?
+  price         Float?
+  currency      String   @default("INR")
+  status        String   // "WANT", "BOUGHT", "DROPPED"
+  category      String   // "TECH", "BOOK", "MOVIE", "OTHER"
+  
+  // Metadata for books/movies
+  author        String?
+  genre         String?
+  imageUrl      String?
+
+  // Postgres Full Text Search Vector
+  search_vector Unsupported("tsvector")?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tags          Tag[]               @relation("WishlistTags")
+  priceHistory  PriceHistoryEntry[]
+  transactions  Transaction[]
+}
+
+model PriceHistoryEntry {
+  id            String   @id @default(cuid())
+  wishlistItemId String
+  price         Float
+  date          DateTime @default(now())
+
+  wishlistItem  WishlistItem @relation(fields: [wishlistItemId], references: [id], onDelete: Cascade)
+}
+
+model LendingEntry {
+  id            String   @id @default(cuid())
+  userId        String
+  personName    String
+  amount        Float
+  type          String   // "LENT", "BORROWED"
+  status        String   // "PENDING", "PARTIAL", "SETTLED"
+  dueDate       DateTime?
+  note          String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repayments    LendingRepayment[]
+}
+
+model LendingRepayment {
+  id            String   @id @default(cuid())
+  lendingEntryId String
+  amount        Float
+  date          DateTime @default(now())
+  note          String?
+
+  lendingEntry  LendingEntry @relation(fields: [lendingEntryId], references: [id], onDelete: Cascade)
+}
+
+model InvestmentAccount {
+  id            String   @id @default(cuid())
+  userId        String
+  name          String
+  type          String   // "MUTUAL_FUND", "STOCKS", "FD", "CRYPTO"
+  currentValue  Float    @default(0.0)
+  investedAmount Float   @default(0.0)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SavingsGoal {
+  id            String   @id @default(cuid())
+  userId        String
+  name          String
+  targetAmount  Float
+  currentAmount Float    @default(0.0)
+  deadline      DateTime?
+  color         String?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
