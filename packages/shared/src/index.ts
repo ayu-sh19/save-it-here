@@ -31,7 +31,7 @@ export const IdeaSchema = z.object({
 
 export type IdeaInput = z.infer<typeof IdeaSchema>;
 
-export type Transaction = TransactionInput & { id: string; createdAt: string; updatedAt: string };
+export type Transaction = TransactionInput & { id: string; createdAt: string; updatedAt: string; refundOfId?: string };
 export type Idea = IdeaInput & { id: string; createdAt: string; updatedAt: string };
 
 export const IdeaUpdateSchema = IdeaSchema.partial();

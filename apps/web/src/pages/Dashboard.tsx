@@ -1,12 +1,15 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchTransactions, fetchDashboard } from '../lib/api';
 import { MarqueeTicker } from '../components/dashboard/MarqueeTicker';
 import { SummaryBlock } from '../components/dashboard/SummaryBlock';
 import { BudgetGauge } from '../components/dashboard/BudgetGauge';
 import { TransactionLedger } from '../components/dashboard/TransactionLedger';
-import { Lightbulb, Heart, Grid3X3 } from 'lucide-react';
-
+import { DashboardCharts } from '../components/dashboard/DashboardCharts';
+import { Lightbulb, Heart, Grid3X3, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 function PlaceholderCard({ title, icon: Icon, to }: { title: string; icon: any; to: string }) {
   return (
@@ -28,15 +31,37 @@ function PlaceholderCard({ title, icon: Icon, to }: { title: string; icon: any; 
 }
 
 export function Dashboard() {
+  const today = new Date();
+  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
+  const [currentYear, setCurrentYear] = useState(today.getFullYear());
+
   const { data: dashboard, isLoading: isDashboardLoading } = useQuery({
-    queryKey: ['dashboard-financial'],
-    queryFn: fetchDashboard,
+    queryKey: ['dashboard-financial', currentMonth, currentYear],
+    queryFn: () => fetchDashboard({ month: currentMonth, year: currentYear }),
   });
 
   const { data: transactions, isLoading: isTxnsLoading } = useQuery({
-    queryKey: ['transactions'],
-    queryFn: fetchTransactions,
+    queryKey: ['transactions', currentMonth, currentYear],
+    queryFn: () => fetchTransactions({ month: currentMonth, year: currentYear }),
   });
+
+  const handlePrevMonth = () => {
+    if (currentMonth === 0) {
+      setCurrentMonth(11);
+      setCurrentYear(prev => prev - 1);
+    } else {
+      setCurrentMonth(prev => prev - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (currentMonth === 11) {
+      setCurrentMonth(0);
+      setCurrentYear(prev => prev + 1);
+    } else {
+      setCurrentMonth(prev => prev + 1);
+    }
+  };
 
   const isLoading = isDashboardLoading || isTxnsLoading;
 
@@ -50,22 +75,47 @@ export function Dashboard() {
   }
 
   // Calculate total budget from all categories that have a budget
-  const totalBudget = dashboard?.categorySpend?.reduce((acc: number, cat: any) => acc + (cat.budgetAmount || 0), 0) || 50000;
+  const localGlobal = localStorage.getItem('global_budget');
+  const totalBudget = localGlobal ? parseFloat(localGlobal) : (dashboard?.categorySpend?.reduce((acc: number, cat: any) => acc + (cat.budgetAmount || 0), 0) || 50000);
+  const monthName = MONTHS[currentMonth];
 
   return (
     <div className="w-full max-w-5xl mx-auto pb-24 md:pb-8">
-      <MarqueeTicker />
+      <MarqueeTicker 
+        monthName={monthName}
+        year={currentYear}
+        spent={dashboard?.currentMonth?.expense || 0}
+        remaining={totalBudget - (dashboard?.currentMonth?.expense || 0)}
+        txnsCount={transactions?.length || 0}
+      />
+
+      <div className="flex items-center justify-between mb-6 bg-[var(--bone)] border-2 border-[var(--ink)] shadow-[4px_4px_0_var(--ink)] p-3">
+        <button onClick={handlePrevMonth} className="p-2 hover:bg-[var(--gold)] border-2 border-transparent hover:border-[var(--ink)] transition-colors">
+          <ChevronLeft className="w-5 h-5 text-[var(--ink)]" />
+        </button>
+        <h2 className="font-display text-lg font-bold tracking-widest uppercase text-[var(--ink)]">
+          {monthName} {currentYear}
+        </h2>
+        <button onClick={handleNextMonth} className="p-2 hover:bg-[var(--gold)] border-2 border-transparent hover:border-[var(--ink)] transition-colors">
+          <ChevronRight className="w-5 h-5 text-[var(--ink)]" />
+        </button>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <SummaryBlock 
-          totalIncome={dashboard?.currentMonth?.income || 0} 
           totalExpense={dashboard?.currentMonth?.expense || 0} 
         />
         <BudgetGauge 
           spent={dashboard?.currentMonth?.expense || 0} 
-          limit={totalBudget > 0 ? totalBudget : 50000} 
+          limit={totalBudget > 0 ? totalBudget : 50000}
+          categories={dashboard?.categorySpend || []}
         />
       </div>
+
+      <DashboardCharts 
+        dailySpend={dashboard?.dailySpend || []}
+        categorySpend={dashboard?.categorySpend || []}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <TransactionLedger transactions={(transactions || []).slice(0, 5)} />

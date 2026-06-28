@@ -31,15 +31,14 @@ export function Books() {
 
   const handleSaveToWishlist = (book: any) => {
     setSavingId(book.id);
-    const volumeInfo = book.volumeInfo;
     wishlistMutation.mutate({
-      title: volumeInfo.title,
-      description: volumeInfo.description || '',
-      url: volumeInfo.infoLink || '',
-      imageUrl: volumeInfo.imageLinks?.thumbnail?.replace('http:', 'https:') || '',
+      title: book.title,
+      description: book.description || '',
+      url: `https://books.google.com/books?id=${book.id}`,
+      imageUrl: book.imageUrl || '',
       category: 'BOOK',
       status: 'WANT',
-      author: volumeInfo.authors ? volumeInfo.authors[0] : undefined,
+      author: book.authors && book.authors.length > 0 ? book.authors[0] : undefined,
     });
   };
 
@@ -74,13 +73,12 @@ export function Books() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {books?.map((book: any) => {
-            const info = book.volumeInfo;
             return (
               <div key={book.id} className="bg-[var(--paper)] border-4 border-[var(--ink)] shadow-[6px_6px_0_var(--ink)] flex flex-col hover:-translate-y-1 hover:shadow-[8px_8px_0_var(--ink)] transition-all">
-                {info.imageLinks?.thumbnail ? (
+                {book.imageUrl ? (
                   <img 
-                    src={info.imageLinks.thumbnail.replace('http:', 'https:')} 
-                    alt={info.title}
+                    src={book.imageUrl} 
+                    alt={book.title}
                     className="w-full aspect-[2/3] object-cover border-b-4 border-[var(--ink)]"
                   />
                 ) : (
@@ -89,8 +87,8 @@ export function Books() {
                   </div>
                 )}
                 <div className="p-4 flex-1 flex flex-col">
-                  <h3 className="font-display font-bold text-lg leading-tight mb-1 line-clamp-2">{info.title}</h3>
-                  <p className="font-mono text-xs text-[var(--ink-60)] mb-4">{info.authors?.[0] || 'Unknown Author'}</p>
+                  <h3 className="font-display font-bold text-lg leading-tight mb-1 line-clamp-2">{book.title}</h3>
+                  <p className="font-mono text-xs text-[var(--ink-60)] mb-4">{book.authors?.[0] || 'Unknown Author'}</p>
                   <div className="mt-auto pt-4 border-t-2 border-dashed border-[var(--ink-30)]">
                     <button 
                       onClick={() => handleSaveToWishlist(book)}

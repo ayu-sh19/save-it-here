@@ -1,8 +1,36 @@
 export async function searchMovies(query: string) {
   const apiKey = process.env.TMDB_API_KEY;
   if (!apiKey) {
-    console.warn('TMDB_API_KEY is not set. Returning empty results.');
-    return [];
+    console.warn('TMDB_API_KEY is not set. Returning mock results for testing.');
+    return [
+      {
+        id: 'mock-movie-1',
+        title: `Mock Movie: ${query}`,
+        description: 'This is a mocked movie description for testing the UI without a TMDB API key.',
+        imageUrl: 'https://images.unsplash.com/photo-1440404653325-ab127d49abc1?q=80&w=500&auto=format&fit=crop',
+        releaseDate: '2026-01-01',
+        mediaType: 'movie',
+        rating: 8.5
+      },
+      {
+        id: 'mock-movie-2',
+        title: 'Inception (Mock)',
+        description: 'A thief who steals corporate secrets through the use of dream-sharing technology.',
+        imageUrl: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=500&auto=format&fit=crop',
+        releaseDate: '2010-07-16',
+        mediaType: 'movie',
+        rating: 8.8
+      },
+      {
+        id: 'mock-tv-1',
+        title: 'The Matrix (Mock)',
+        description: 'A computer hacker learns from mysterious rebels about the true nature of his reality and his role in the war against its controllers.',
+        imageUrl: 'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?q=80&w=500&auto=format&fit=crop',
+        releaseDate: '1999-03-31',
+        mediaType: 'movie',
+        rating: 8.7
+      }
+    ];
   }
 
   try {

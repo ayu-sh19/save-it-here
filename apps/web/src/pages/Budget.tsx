@@ -5,7 +5,7 @@ import { PieChart, Activity } from 'lucide-react';
 export function Budget() {
   const { data: dashboard, isLoading } = useQuery({
     queryKey: ['dashboard'],
-    queryFn: fetchDashboard,
+    queryFn: () => fetchDashboard(),
   });
 
   if (isLoading) {
@@ -17,8 +17,9 @@ export function Budget() {
     );
   }
 
-  const { totalExpense } = dashboard?.summary || { totalExpense: 0 };
-  const budgetLimit = 100000; // Mock global budget limit
+  const totalExpense = dashboard?.currentMonth?.expense || 0;
+  const localGlobal = localStorage.getItem('global_budget');
+  const budgetLimit = localGlobal ? parseFloat(localGlobal) : (dashboard?.categorySpend?.reduce((acc: number, cat: any) => acc + (cat.budgetAmount || 0), 0) || 100000);
   const percentUsed = Math.min((totalExpense / budgetLimit) * 100, 100);
 
   return (

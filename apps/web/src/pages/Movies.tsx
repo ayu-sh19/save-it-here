@@ -33,9 +33,9 @@ export function Movies() {
     setSavingId(movie.id);
     wishlistMutation.mutate({
       title: movie.title,
-      description: movie.overview,
+      description: movie.description,
       url: `https://www.themoviedb.org/movie/${movie.id}`,
-      imageUrl: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '',
+      imageUrl: movie.imageUrl || '',
       category: 'MOVIE',
       status: 'WANT'
     });
@@ -73,9 +73,9 @@ export function Movies() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {movies?.map((movie: any) => (
             <div key={movie.id} className="bg-[var(--paper)] border-4 border-[var(--ink)] shadow-[6px_6px_0_var(--ink)] flex flex-col hover:-translate-y-1 hover:shadow-[8px_8px_0_var(--ink)] transition-all">
-              {movie.poster_path ? (
+              {movie.imageUrl ? (
                 <img 
-                  src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`} 
+                  src={movie.imageUrl} 
                   alt={movie.title}
                   className="w-full aspect-[2/3] object-cover border-b-4 border-[var(--ink)]"
                 />
@@ -86,7 +86,7 @@ export function Movies() {
               )}
               <div className="p-4 flex-1 flex flex-col">
                 <h3 className="font-display font-bold text-lg leading-tight mb-2 line-clamp-2">{movie.title}</h3>
-                <p className="font-mono text-xs text-[var(--ink-60)] mb-4">{movie.release_date?.substring(0, 4)}</p>
+                <p className="font-mono text-xs text-[var(--ink-60)] mb-4">{movie.releaseDate?.substring(0, 4)}</p>
                 <div className="mt-auto pt-4 border-t-2 border-dashed border-[var(--ink-30)]">
                   <button 
                     onClick={() => handleSaveToWishlist(movie)}

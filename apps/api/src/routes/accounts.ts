@@ -77,7 +77,16 @@ accounts.delete('/:id', async (c) => {
   try {
     const id = c.req.param('id');
     
-    // Prisma will restrict delete if there are foreign keys, but we assume cascade or manual handling.
+    // Manually delete associated transactions first to prevent foreign key errors
+    await db.transaction.deleteMany({
+      where: {
+        OR: [
+          { accountId: id },
+          { destAccountId: id }
+        ]
+      }
+    });
+
     await db.account.delete({
       where: { id, userId: MOCK_USER_ID },
     });

@@ -1,21 +1,33 @@
+import { Link } from 'react-router-dom';
 import type { Transaction } from '@save-it-here/shared';
 import { cn } from '../../lib/utils';
-import { Plus } from 'lucide-react';
+import { Plus, ArrowRight } from 'lucide-react';
+import { useQuickAddStore } from '../../store/quickAdd';
 
 interface TransactionLedgerProps {
   transactions: Transaction[];
 }
 
 export function TransactionLedger({ transactions }: TransactionLedgerProps) {
+  const { openQuickAdd } = useQuickAddStore();
+
   return (
     <div className="bg-[var(--bone)] border-2 border-[var(--ink)] shadow-[4px_4px_0_var(--ink)] col-span-1 md:col-span-2">
       <div className="p-4 border-b-2 border-[var(--ink)] flex justify-between items-center bg-[var(--paper)]">
         <h3 className="font-display text-[13px] font-semibold tracking-[0.12em] uppercase text-[var(--ink)]">
           RECENT TRANSACTIONS
         </h3>
-        <button className="flex items-center gap-1 font-display text-[11px] font-bold tracking-widest text-[var(--crimson)] hover:text-[var(--ink)] transition-colors uppercase">
-          Quick-Add <Plus className="w-3 h-3" />
-        </button>
+        <div className="flex items-center gap-4">
+          <Link to="/transactions" className="flex items-center gap-1 font-display text-[11px] font-bold tracking-widest text-[var(--ink-60)] hover:text-[var(--ink)] transition-colors uppercase">
+            View All <ArrowRight className="w-3 h-3" />
+          </Link>
+          <button 
+            onClick={() => openQuickAdd('transaction')}
+            className="flex items-center gap-1 font-display text-[11px] font-bold tracking-widest text-[var(--crimson)] hover:text-[var(--ink)] transition-colors uppercase"
+          >
+            Quick-Add <Plus className="w-3 h-3" />
+          </button>
+        </div>
       </div>
       
       <div className="flex flex-col">

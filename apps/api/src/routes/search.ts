@@ -7,11 +7,11 @@ const search = new Hono();
 
 search.get(
   '/global',
-  zValidator('query', z.object({
-    q: z.string().min(1)
-  })),
   async (c) => {
-    const { q } = c.req.valid('query');
+    const q = c.req.query('q');
+    if (!q) {
+      return c.json({ error: 'Query parameter q is required' }, 400);
+    }
 
     try {
       // We use plainto_tsquery to safely parse user input into a tsquery
@@ -21,9 +21,9 @@ search.get(
           title as headline, 
           content as description, 
           'IDEA' as source, 
-          ts_rank(search_vector, plainto_tsquery('english', ${q})) as rank
+          ts_rank(to_tsvector('english', coalesce(title, '') || ' ' || coalesce(content, '')), plainto_tsquery('english', ${q})) as rank
         FROM "Idea"
-        WHERE "userId" = ${MOCK_USER_ID} AND search_vector @@ plainto_tsquery('english', ${q})
+        WHERE "userId" = ${MOCK_USER_ID} AND to_tsvector('english', coalesce(title, '') || ' ' || coalesce(content, '')) @@ plainto_tsquery('english', ${q})
         
         UNION ALL
         
@@ -32,9 +32,9 @@ search.get(
           merchant as headline, 
           note as description, 
           'TRANSACTION' as source, 
-          ts_rank(search_vector, plainto_tsquery('english', ${q})) as rank
+          ts_rank(to_tsvector('english', coalesce(merchant, '') || ' ' || coalesce(note, '')), plainto_tsquery('english', ${q})) as rank
         FROM "Transaction"
-        WHERE "userId" = ${MOCK_USER_ID} AND search_vector @@ plainto_tsquery('english', ${q})
+        WHERE "userId" = ${MOCK_USER_ID} AND to_tsvector('english', coalesce(merchant, '') || ' ' || coalesce(note, '')) @@ plainto_tsquery('english', ${q})
 
         UNION ALL
 
@@ -43,9 +43,9 @@ search.get(
           title as headline, 
           description as description, 
           'WISHLIST' as source, 
-          ts_rank(search_vector, plainto_tsquery('english', ${q})) as rank
+          ts_rank(to_tsvector('english', coalesce(title, '') || ' ' || coalesce(description, '')), plainto_tsquery('english', ${q})) as rank
         FROM "WishlistItem"
-        WHERE "userId" = ${MOCK_USER_ID} AND search_vector @@ plainto_tsquery('english', ${q})
+        WHERE "userId" = ${MOCK_USER_ID} AND to_tsvector('english', coalesce(title, '') || ' ' || coalesce(description, '')) @@ plainto_tsquery('english', ${q})
 
         UNION ALL
 
@@ -54,9 +54,9 @@ search.get(
           caption as headline, 
           "authorHandle" as description, 
           'ARCHIVE' as source, 
-          ts_rank(search_vector, plainto_tsquery('english', ${q})) as rank
+          ts_rank(to_tsvector('english', coalesce(caption, '') || ' ' || coalesce("authorHandle", '')), plainto_tsquery('english', ${q})) as rank
         FROM "ArchiveItem"
-        WHERE "userId" = ${MOCK_USER_ID} AND search_vector @@ plainto_tsquery('english', ${q})
+        WHERE "userId" = ${MOCK_USER_ID} AND to_tsvector('english', coalesce(caption, '') || ' ' || coalesce("authorHandle", '')) @@ plainto_tsquery('english', ${q})
 
         ORDER BY rank DESC
         LIMIT 50;

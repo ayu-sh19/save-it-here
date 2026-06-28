@@ -9,8 +9,18 @@ const api = axios.create({
   },
 });
 
-export const fetchTransactions = async (): Promise<Transaction[]> => {
-  const { data } = await api.get('/transactions');
+export const fetchTransactions = async (params?: { month?: number; year?: number; categoryId?: string; search?: string }): Promise<Transaction[]> => {
+  let url = '/transactions';
+  if (params) {
+    const searchParams = new URLSearchParams();
+    if (params.month !== undefined) searchParams.append('month', params.month.toString());
+    if (params.year !== undefined) searchParams.append('year', params.year.toString());
+    if (params.categoryId) searchParams.append('categoryId', params.categoryId);
+    if (params.search) searchParams.append('search', params.search);
+    const qString = searchParams.toString();
+    if (qString) url += `?${qString}`;
+  }
+  const { data } = await api.get(url);
   return data.data;
 };
 
@@ -44,8 +54,16 @@ export const fetchArchives = async () => {
   return data.data;
 };
 
-export const fetchDashboard = async () => {
-  const { data } = await api.get('/dashboard/financial');
+export const fetchDashboard = async (params?: { month?: number; year?: number }) => {
+  let url = '/dashboard/financial';
+  if (params) {
+    const searchParams = new URLSearchParams();
+    if (params.month !== undefined) searchParams.append('month', params.month.toString());
+    if (params.year !== undefined) searchParams.append('year', params.year.toString());
+    const qString = searchParams.toString();
+    if (qString) url += `?${qString}`;
+  }
+  const { data } = await api.get(url);
   return data.data;
 };
 
@@ -109,6 +127,16 @@ export const createTransaction = async (transaction: Partial<Transaction>) => {
   return data.data;
 };
 
+export const updateTransaction = async (id: string, transaction: Partial<Transaction>) => {
+  const { data } = await api.put(`/transactions/${id}`, transaction);
+  return data.data;
+};
+
+export const refundTransaction = async (id: string, amount?: number) => {
+  const { data } = await api.post(`/transactions/${id}/refund`, amount ? { amount } : {});
+  return data.data;
+};
+
 export const createWishlist = async (item: any) => {
   const { data } = await api.post('/wishlist', item);
   return data.data;
@@ -126,6 +154,11 @@ export const createCategory = async (category: any) => {
 
 export const createLending = async (lending: any) => {
   const { data } = await api.post('/lending', lending);
+  return data.data;
+};
+
+export const addLendingRepayment = async (id: string, repayment: any) => {
+  const { data } = await api.post(`/lending/${id}/repayment`, repayment);
   return data.data;
 };
 

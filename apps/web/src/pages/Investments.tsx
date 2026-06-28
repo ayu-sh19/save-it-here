@@ -1,49 +1,21 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchInvestments, createInvestmentAccount, createSavingsGoal } from '../lib/api';
+import { useQuery } from '@tanstack/react-query';
+import { fetchInvestments } from '../lib/api';
 import { TrendingUp, Target, Plus } from 'lucide-react';
+import { useQuickAddStore } from '../store/quickAdd';
 
 export function Investments() {
-  const queryClient = useQueryClient();
+  const openQuickAdd = useQuickAddStore(state => state.openQuickAdd);
   const { data: investmentsData, isLoading } = useQuery({
     queryKey: ['investments'],
     queryFn: fetchInvestments,
   });
 
-  const invMutation = useMutation({
-    mutationFn: createInvestmentAccount,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['investments'] })
-  });
-
-  const goalMutation = useMutation({
-    mutationFn: createSavingsGoal,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['investments'] })
-  });
-
   const handleAddGoal = () => {
-    const name = window.prompt("Enter savings goal name:");
-    if (!name) return;
-    const target = window.prompt("Enter target amount (₹):");
-    if (!target) return;
-    
-    goalMutation.mutate({
-      name,
-      targetAmount: parseFloat(target),
-      color: 'var(--gold)'
-    });
+    openQuickAdd('goal');
   };
 
   const handleAddInvestment = () => {
-    const name = window.prompt("Enter investment account name:");
-    if (!name) return;
-    const type = window.prompt("Enter type (e.g. MUTUAL_FUND, STOCK):", "MUTUAL_FUND");
-    if (!type) return;
-    const initialValue = window.prompt("Enter current/initial value (₹):");
-    
-    invMutation.mutate({
-      name,
-      type,
-      initialValue: parseFloat(initialValue || '0')
-    });
+    openQuickAdd('investment');
   };
 
   if (isLoading) {

@@ -5,15 +5,30 @@ const dashboard = new Hono();
 
 dashboard.get('/financial', async (c) => {
   try {
-    const today = new Date();
-    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const monthQuery = c.req.query('month');
+    const yearQuery = c.req.query('year');
+    
+    let firstDayOfMonth: Date;
+    let lastDayOfMonth: Date;
 
-    // Fetch all transactions for the current month
+    if (monthQuery && yearQuery) {
+      const month = parseInt(monthQuery); // 0-indexed
+      const year = parseInt(yearQuery);
+      firstDayOfMonth = new Date(year, month, 1);
+      lastDayOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
+    } else {
+      const today = new Date();
+      firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+    }
+
+    // Fetch all transactions for the selected month
     const transactions = await db.transaction.findMany({
       where: {
         userId: MOCK_USER_ID,
         date: {
           gte: firstDayOfMonth,
+          lte: lastDayOfMonth
         }
       },
       include: {

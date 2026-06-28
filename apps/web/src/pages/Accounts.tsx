@@ -1,11 +1,23 @@
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchAccounts, fetchCategories, deleteAccount, updateAccount, deleteCategory, updateCategoryBudget } from '../lib/api';
 import { Wallet, PiggyBank, CreditCard, Plus, Trash2, Edit2 } from 'lucide-react';
 import { useQuickAddStore } from '../store/quickAdd';
+import { PromptModal } from '../components/layout/PromptModal';
+import { ConfirmModal } from '../components/layout/ConfirmModal';
 
 export function Accounts() {
   const queryClient = useQueryClient();
   const openQuickAdd = useQuickAddStore(state => state.openQuickAdd);
+  
+  // Modal states
+  const [promptState, setPromptState] = useState<{isOpen: boolean, title: string, defaultValue: string, type: 'text'|'number', action: (v: string) => void}>({
+    isOpen: false, title: '', defaultValue: '', type: 'text', action: () => {}
+  });
+  const [confirmState, setConfirmState] = useState<{isOpen: boolean, title: string, message: string, action: () => void}>({
+    isOpen: false, title: '', message: '', action: () => {}
+  });
+
   const { data: accounts, isLoading: isAccountsLoading } = useQuery({
     queryKey: ['accounts'],
     queryFn: fetchAccounts,
@@ -37,35 +49,59 @@ export function Accounts() {
   });
 
   const handleEditBalance = (acc: any) => {
-    const newBalance = window.prompt(`Enter new balance for ${acc.name}:`, acc.balance);
-    if (newBalance !== null) {
-      const parsed = parseFloat(newBalance);
-      if (!isNaN(parsed)) {
-        updateAccountMutation.mutate({ id: acc.id, data: { balance: parsed } });
+    setPromptState({
+      isOpen: true,
+      title: `Edit Balance: ${acc.name}`,
+      defaultValue: String(acc.balance),
+      type: 'number',
+      action: (val: string) => {
+        const parsed = parseFloat(val);
+        if (!isNaN(parsed)) {
+          updateAccountMutation.mutate({ id: acc.id, data: { balance: parsed } });
+        }
+        setPromptState(prev => ({ ...prev, isOpen: false }));
       }
-    }
+    });
   };
 
   const handleDeleteAccount = (id: string, name: string) => {
-    if (window.confirm(`Are you sure you want to delete ${name}? This may break existing transactions.`)) {
-      delAccountMutation.mutate(id);
-    }
+    setConfirmState({
+      isOpen: true,
+      title: 'Delete Account',
+      message: `Are you sure you want to delete ${name}? This will also remove any transactions associated with this account.`,
+      action: () => {
+        delAccountMutation.mutate(id);
+        setConfirmState(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   const handleEditBudget = (cat: any) => {
-    const newBudget = window.prompt(`Enter new budget for ${cat.name}:`, cat.budgetAmount || 0);
-    if (newBudget !== null) {
-      const parsed = parseFloat(newBudget);
-      if (!isNaN(parsed) && parsed >= 0) {
-        updateBudgetMutation.mutate({ id: cat.id, amount: parsed });
+    setPromptState({
+      isOpen: true,
+      title: `Edit Budget: ${cat.name}`,
+      defaultValue: String(cat.budgetAmount || 0),
+      type: 'number',
+      action: (val: string) => {
+        const parsed = parseFloat(val);
+        if (!isNaN(parsed) && parsed >= 0) {
+          updateBudgetMutation.mutate({ id: cat.id, amount: parsed });
+        }
+        setPromptState(prev => ({ ...prev, isOpen: false }));
       }
-    }
+    });
   };
 
   const handleDeleteCategory = (id: string, name: string) => {
-    if (window.confirm(`Are you sure you want to delete category ${name}?`)) {
-      delCategoryMutation.mutate(id);
-    }
+    setConfirmState({
+      isOpen: true,
+      title: 'Delete Category',
+      message: `Are you sure you want to delete the category "${name}"?`,
+      action: () => {
+        delCategoryMutation.mutate(id);
+        setConfirmState(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   if (isAccountsLoading || isCategoriesLoading) {
@@ -140,6 +176,44 @@ export function Accounts() {
 
         {/* Categories Section */}
         <div>
+          <div className="mb-6 p-4 border-2 border-[var(--ink)] bg-[var(--gold)] shadow-[4px_4px_0_var(--ink)] flex justify-between items-center">
+            <div>
+              <h2 className="font-display text-lg font-bold uppercase tracking-wider">Global Monthly Budget</h2>
+              <p className="font-mono text-[10px] text-[var(--ink-60)]">Set an overall limit or let it sum from categories.</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="font-mono text-xl font-bold">
+                ₹{localStorage.getItem('global_budget') || categoryItems.reduce((acc: number, cat: any) => acc + (cat.budgetAmount || 0), 0) || 50000}
+              </span>
+              <button 
+                onClick={() => {
+                  const current = localStorage.getItem('global_budget') || '';
+                  setPromptState({
+                    isOpen: true,
+                    title: 'Set Global Budget',
+                    defaultValue: current,
+                    type: 'number',
+                    action: (val: string) => {
+                      if (!val) {
+                        localStorage.removeItem('global_budget');
+                      } else {
+                        const parsed = parseFloat(val);
+                        if (!isNaN(parsed) && parsed > 0) {
+                          localStorage.setItem('global_budget', parsed.toString());
+                        }
+                      }
+                      setPromptState(prev => ({ ...prev, isOpen: false }));
+                      // trigger re-render
+                      window.dispatchEvent(new Event('storage'));
+                    }
+                  });
+                }}
+                className="text-[var(--ink)] hover:bg-[var(--ink)] hover:text-[var(--white)] p-2 border-2 border-[var(--ink)] bg-white transition-colors shadow-[2px_2px_0_var(--ink)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5" title="Edit Global Budget">
+                <Edit2 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
           <div className="flex justify-between items-center mb-4">
             <h2 className="font-display text-xl font-bold uppercase border-l-4 border-[var(--blue)] pl-3">Budget Categories</h2>
             <button 
@@ -174,6 +248,23 @@ export function Accounts() {
           </div>
         </div>
       </div>
+      
+      <PromptModal
+        isOpen={promptState.isOpen}
+        title={promptState.title}
+        defaultValue={promptState.defaultValue}
+        type={promptState.type}
+        onClose={() => setPromptState(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={promptState.action}
+      />
+
+      <ConfirmModal
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        onClose={() => setConfirmState(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmState.action}
+      />
     </div>
   );
 }

@@ -1,12 +1,34 @@
-import { useQuery } from '@tanstack/react-query';
-import { fetchLending } from '../lib/api';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchLending, addLendingRepayment, fetchAccounts } from '../lib/api';
 import { Handshake, Plus, ArrowRight, ArrowLeft } from 'lucide-react';
+import { useQuickAddStore } from '../store/quickAdd';
 
 export function Lending() {
+  const openQuickAdd = useQuickAddStore(state => state.openQuickAdd);
+  const queryClient = useQueryClient();
+  
   const { data: lendingEntries, isLoading } = useQuery({
     queryKey: ['lending'],
     queryFn: fetchLending,
   });
+
+  const { data: accountsData } = useQuery({
+    queryKey: ['accounts'],
+    queryFn: fetchAccounts,
+  });
+  const accounts = accountsData || [];
+
+  const repayMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string, data: any }) => addLendingRepayment(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lending'] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      setRepayModal(null);
+    }
+  });
+
+  const [repayModal, setRepayModal] = useState<{ id: string, amount: string, accountId: string } | null>(null);
 
   if (isLoading) {
     return (
@@ -22,13 +44,27 @@ export function Lending() {
   const totalLent = entries.filter((e: any) => e.type === 'LEND').reduce((acc: number, e: any) => acc + Number(e.outstandingAmount), 0);
   const totalBorrowed = entries.filter((e: any) => e.type === 'BORROW').reduce((acc: number, e: any) => acc + Number(e.outstandingAmount), 0);
 
+  const handleRepay = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (repayModal && repayModal.amount && repayModal.accountId) {
+      repayMutation.mutate({
+        id: repayModal.id,
+        data: {
+          amount: parseFloat(repayModal.amount),
+          accountId: repayModal.accountId,
+          date: new Date().toISOString(),
+        }
+      });
+    }
+  };
+
   return (
     <div className="w-full max-w-5xl mx-auto pb-12">
       <div className="flex items-center justify-between mb-8 pb-4 border-b-2 border-[var(--ink)]">
         <h1 className="font-display text-2xl font-bold uppercase tracking-wider text-[var(--ink)] flex items-center gap-2">
           <Handshake className="w-6 h-6" /> Lending Ledger
         </h1>
-        <button className="flex items-center gap-1 font-mono text-xs font-bold uppercase tracking-widest text-[var(--ink)] border-2 border-[var(--ink)] px-3 py-1.5 shadow-[4px_4px_0_var(--ink)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[0_0_0_var(--ink)] transition-all bg-[var(--gold)]">
+        <button onClick={() => openQuickAdd('lending')} className="flex items-center gap-1 font-mono text-xs font-bold uppercase tracking-widest text-[var(--ink)] border-2 border-[var(--ink)] px-3 py-1.5 shadow-[4px_4px_0_var(--ink)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[0_0_0_var(--ink)] transition-all bg-[var(--gold)]">
           <Plus className="w-4 h-4" /> New Entry
         </button>
       </div>
@@ -62,13 +98,43 @@ export function Lending() {
                   </div>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="font-mono text-xs text-[var(--ink-60)]">Original: ₹{Number(entry.principalAmount).toLocaleString()}</p>
-                <p className="font-mono text-xl font-bold text-[var(--ink)]">
-                  Outstanding: ₹{Number(entry.outstandingAmount).toLocaleString()}
-                </p>
+              <div className="text-right flex flex-col items-end gap-2">
+                <div>
+                  <p className="font-mono text-xs text-[var(--ink-60)]">Original: ₹{Number(entry.principalAmount).toLocaleString()}</p>
+                  <p className="font-mono text-xl font-bold text-[var(--ink)]">
+                    Outstanding: ₹{Number(entry.outstandingAmount).toLocaleString()}
+                  </p>
+                </div>
+                {entry.status !== 'SETTLED' && (
+                  <button onClick={() => setRepayModal({ id: entry.id, amount: entry.outstandingAmount, accountId: '' })} className="px-3 py-1 bg-[var(--ink)] text-white font-mono text-xs font-bold uppercase tracking-widest hover:bg-[var(--crimson)] transition-colors">
+                    Repay
+                  </button>
+                )}
               </div>
             </div>
+            {repayModal?.id === entry.id && (
+              <form onSubmit={handleRepay} className="mt-4 p-4 border-t-2 border-dashed border-[var(--ink)] bg-white grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div>
+                  <label className="block font-sans font-bold text-[10px] mb-1 uppercase tracking-widest text-[var(--ink)]/60">Amount</label>
+                  <input type="number" max={entry.outstandingAmount} className="w-full p-2 border-2 border-[var(--ink)] focus:border-[var(--crimson)] outline-none font-mono font-bold text-sm shadow-[2px_2px_0_var(--ink)]" value={repayModal?.amount || ''} onChange={e => setRepayModal(prev => prev ? {...prev, amount: e.target.value} : null)} required />
+                </div>
+                <div>
+                  <label className="block font-sans font-bold text-[10px] mb-1 uppercase tracking-widest text-[var(--ink)]/60">Account</label>
+                  <select className="w-full p-2 border-2 border-[var(--ink)] focus:border-[var(--crimson)] outline-none font-sans font-bold text-sm shadow-[2px_2px_0_var(--ink)]" value={repayModal?.accountId || ''} onChange={e => setRepayModal(prev => prev ? {...prev, accountId: e.target.value} : null)} required>
+                    <option value="">Select Account...</option>
+                    {accounts.map((acc: any) => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <button type="submit" disabled={repayMutation.isPending} className="flex-1 py-2 bg-[var(--crimson)] text-white font-mono text-xs font-bold uppercase border-2 border-[var(--crimson)]">
+                    Confirm
+                  </button>
+                  <button type="button" onClick={() => setRepayModal(null)} className="px-3 py-2 border-2 border-[var(--ink)] bg-[var(--paper)] text-xs font-bold uppercase hover:bg-gray-200">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         ))}
         {entries.length === 0 && (

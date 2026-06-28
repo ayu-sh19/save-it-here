@@ -37,9 +37,9 @@ lending.post('/:id/repayment', async (c) => {
     const id = c.req.param('id');
     const body = await c.req.json();
     const amount = Number(body.amount);
-    const { date, note } = body;
+    const { date, note, accountId } = body;
 
-    if (isNaN(amount) || amount <= 0 || !date) {
+    if (isNaN(amount) || amount <= 0 || !date || !accountId) {
       return c.json({ success: false, error: 'Invalid repayment data' }, 400);
     }
 
@@ -72,6 +72,25 @@ lending.post('/:id/repayment', async (c) => {
         where: { id },
         data: {
           status: newStatus,
+        }
+      });
+
+      // Log a transaction to reflect money movement
+      const txType = entry.type === 'LENT' ? 'INCOME' : 'EXPENSE';
+      const txNote = entry.type === 'LENT' 
+        ? `Repayment from ${entry.personName} for loan` 
+        : `Repayment to ${entry.personName} for loan`;
+
+      await tx.transaction.create({
+        data: {
+          amount,
+          type: txType,
+          paymentMethod: 'UPI', // Defaulting for repayment
+          date: new Date(date),
+          merchant: entry.personName,
+          note: note || txNote,
+          accountId,
+          userId: MOCK_USER_ID,
         }
       });
 

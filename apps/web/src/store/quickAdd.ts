@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type QuickAddTab = 'idea' | 'transaction' | 'wishlist' | 'account' | 'category' | 'lending';
+export type QuickAddTab = 'idea' | 'transaction' | 'wishlist' | 'account' | 'category' | 'lending' | 'investment' | 'goal';
 
 interface QuickAddStore {
   isOpen: boolean;
