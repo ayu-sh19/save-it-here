@@ -176,3 +176,18 @@ export const discoverBooks = async (query: string) => {
   const { data } = await api.get(`/discover/books?q=${encodeURIComponent(query)}`);
   return data.data;
 };
+
+export const updateWishlistItem = async (id: string, updates: any) => {
+  const { data } = await api.patch(`/wishlist/${id}`, updates);
+  return data;
+};
+
+export const deleteWishlistItem = async (id: string) => {
+  const { data } = await api.delete(`/wishlist/${id}`);
+  return data;
+};
+
+export const parseUrl = async (url: string) => {
+  const { data } = await api.post('/metadata/parse-url', { url });
+  return data.data;
+};

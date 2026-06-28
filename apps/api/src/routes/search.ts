@@ -70,4 +70,79 @@ search.get(
   }
 );
 
+// TMDB Genre Cache
+let tmdbGenreCache: Record<number, string> | null = null;
+
+async function getTmdbGenres() {
+  if (tmdbGenreCache) return tmdbGenreCache;
+  const apiKey = process.env.TMDB_API_KEY;
+  if (!apiKey) throw new Error('TMDB API Key missing');
+  const res = await fetch(`https://api.themoviedb.org/3/genre/movie/list?api_key=${apiKey}&language=en-US`);
+  const data = await res.json();
+  const map: Record<number, string> = {};
+  for (const g of data.genres || []) {
+    map[g.id] = g.name;
+  }
+  tmdbGenreCache = map;
+  return map;
+}
+
+search.get('/movies', async (c) => {
+  const q = c.req.query('q');
+  if (!q) return c.json({ data: [] });
+
+  try {
+    const apiKey = process.env.TMDB_API_KEY;
+    if (!apiKey) return c.json({ error: 'TMDB API Key missing' }, 500);
+
+    const [genresMap, searchRes] = await Promise.all([
+      getTmdbGenres(),
+      fetch(`https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(q)}&language=en-US&page=1&include_adult=false`)
+    ]);
+
+    const data = await searchRes.json();
+    const results = (data.results || []).map((m: any) => ({
+      id: m.id.toString(),
+      title: m.title,
+      year: m.release_date ? m.release_date.split('-')[0] : '',
+      posterUrl: m.poster_path ? `https://image.tmdb.org/t/p/w200${m.poster_path}` : null,
+      genres: (m.genre_ids || []).map((id: number) => genresMap[id]).filter(Boolean).join(', ')
+    }));
+
+    return c.json({ data: results });
+  } catch (error) {
+    console.error('TMDB search error:', error);
+    return c.json({ error: 'Failed to search movies' }, 500);
+  }
+});
+
+search.get('/books', async (c) => {
+  const q = c.req.query('q');
+  if (!q) return c.json({ data: [] });
+
+  try {
+    const apiKey = process.env.GOOGLE_BOOKS_API_KEY;
+    if (!apiKey) return c.json({ error: 'Google Books API Key missing' }, 500);
+
+    const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&key=${apiKey}&maxResults=10`);
+    const data = await res.json();
+
+    const results = (data.items || []).map((b: any) => {
+      const info = b.volumeInfo || {};
+      return {
+        id: b.id,
+        title: info.title,
+        author: info.authors ? info.authors.join(', ') : '',
+        coverUrl: info.imageLinks?.thumbnail?.replace('http:', 'https:') || null,
+        genres: info.categories ? info.categories.join(', ') : ''
+      };
+    });
+
+    return c.json({ data: results });
+  } catch (error) {
+    console.error('Google Books search error:', error);
+    return c.json({ error: 'Failed to search books' }, 500);
+  }
+});
+
 export default search;

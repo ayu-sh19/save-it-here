@@ -46,7 +46,7 @@ wishlist.post('/', async (c) => {
       return c.json({ success: false, error: result.error.errors }, 400);
     }
 
-    const { title, description, url, price, currency, status, category, author, genre, imageUrl } = result.data;
+    const { title, description, url, price, currency, status, category, author, genre, imageUrl, tags } = result.data;
 
     const item = await db.wishlistItem.create({
       data: {
@@ -61,6 +61,12 @@ wishlist.post('/', async (c) => {
         author,
         genre,
         imageUrl,
+        tags: tags && tags.length > 0 ? {
+          connectOrCreate: tags.map(tag => ({
+            where: { userId_name: { userId: MOCK_USER_ID, name: tag.trim() } },
+            create: { userId: MOCK_USER_ID, name: tag.trim() }
+          }))
+        } : undefined,
       },
       include: {
         tags: true,
@@ -86,9 +92,22 @@ wishlist.patch('/:id', async (c) => {
       return c.json({ success: false, error: result.error.errors }, 400);
     }
 
+    const { tags, ...data } = result.data;
+    const updateData: any = { ...data };
+
+    if (tags !== undefined) {
+      updateData.tags = {
+        set: [], // clear existing tags
+        connectOrCreate: tags.map(tag => ({
+          where: { userId_name: { userId: MOCK_USER_ID, name: tag.trim() } },
+          create: { userId: MOCK_USER_ID, name: tag.trim() }
+        }))
+      };
+    }
+
     const item = await db.wishlistItem.update({
       where: { id, userId: MOCK_USER_ID },
-      data: result.data,
+      data: updateData,
       include: {
         tags: true,
       }

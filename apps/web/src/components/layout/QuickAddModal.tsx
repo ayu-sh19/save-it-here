@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { useQuickAddStore, type QuickAddTab } from '../../store/quickAdd';
-import { createIdea, createTransaction, updateTransaction, createWishlist, fetchAccounts, fetchCategories, createAccount, createCategory, createLending, createInvestmentAccount, createSavingsGoal } from '../../lib/api';
+import { createIdea, createTransaction, updateTransaction, createWishlist, fetchAccounts, fetchCategories, createAccount, createCategory, createLending, createInvestmentAccount, createSavingsGoal, fetchInvestments, parseUrl, fetchWishlist } from '../../lib/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 export function QuickAddModal() {
@@ -13,9 +13,16 @@ export function QuickAddModal() {
   // Fetch accounts & categories for dropdowns
   const { data: accountsData } = useQuery({ queryKey: ['accounts'], queryFn: fetchAccounts, enabled: isOpen });
   const { data: categoriesData } = useQuery({ queryKey: ['categories'], queryFn: fetchCategories, enabled: isOpen });
+  const { data: investmentsData } = useQuery({ queryKey: ['investments'], queryFn: fetchInvestments, enabled: isOpen });
+  const { data: wishlistData } = useQuery({ queryKey: ['wishlist'], queryFn: fetchWishlist, enabled: isOpen && activeTab === 'wishlist' });
+  
   const accounts = accountsData || [];
   const categories = categoriesData || [];
-
+  const mutualFunds = investmentsData?.accounts?.filter((a: any) => a.type === 'MUTUAL_FUND') || [];
+  
+  const defaultWishlistCategories = ['TECH', 'BOOK', 'MOVIE', 'OTHER'];
+  const wishlistItems = (wishlistData as any[]) || [];
+  
   // Form States
   const [ideaTitle, setIdeaTitle] = useState(prefillData.ideaTitle || '');
   const [ideaContent, setIdeaContent] = useState(prefillData.ideaContent || '');
@@ -37,6 +44,10 @@ export function QuickAddModal() {
   const [splits, setSplits] = useState<{categoryId: string, amount: string, note: string}[]>(prefillData.splits || []);
 
   const [wishlistUrl, setWishlistUrl] = useState('');
+  const [wishlistTags, setWishlistTags] = useState('');
+  const [wishlistCategory, setWishlistCategory] = useState('OTHER');
+
+  const allWishlistCategories = Array.from(new Set([...defaultWishlistCategories, ...wishlistItems.map((i: any) => i.category).filter(Boolean), wishlistCategory]));
 
   const [accountName, setAccountName] = useState('');
   const [accountType, setAccountType] = useState('BANK');
@@ -92,7 +103,7 @@ export function QuickAddModal() {
       setIsEditMode(false);
       setIsGroupExpense(false); setMyShare(''); setParticipants([]);
       setIsSplit(false); setSplits([]);
-      setWishlistUrl('');
+      setWishlistUrl(''); setWishlistTags(''); setWishlistCategory('OTHER');
       setAccountName(''); setAccountBalance('');
       setCategoryName('');
       setIsAddingCategory(false); setNewCategoryName('');
@@ -126,7 +137,19 @@ export function QuickAddModal() {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-financial'] });
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
-      closeQuickAdd(); 
+      queryClient.invalidateQueries({ queryKey: ['investments'] });
+      
+      if (isEditMode) {
+        closeQuickAdd(); 
+      } else {
+        setTxAmount('');
+        setTxMerchant('');
+        setTxCategoryId('none');
+        setIdeaTitle('');
+        setIdeaContent('');
+        setWishlistUrl('');
+        // keep modal open for next entry
+      }
     }
   });
 
@@ -200,7 +223,29 @@ export function QuickAddModal() {
         await txMutation.mutateAsync(txPayload);
       } else if (activeTab === 'wishlist') {
         if (!wishlistUrl) throw new Error('URL is required');
-        await wishlistMutation.mutateAsync({ url: wishlistUrl, title: 'Pending Extraction...', status: 'WANT', category: 'OTHER' });
+        
+        let metaTitle = 'Unknown Link';
+        let metaDesc = '';
+        let metaImage = '';
+        
+        try {
+          const meta = await parseUrl(wishlistUrl);
+          metaTitle = meta.title || metaTitle;
+          metaDesc = meta.description || '';
+          metaImage = meta.image || '';
+        } catch (e) {
+          console.error("Failed to extract metadata");
+        }
+        
+        await wishlistMutation.mutateAsync({ 
+          url: wishlistUrl, 
+          title: metaTitle, 
+          description: metaDesc,
+          imageUrl: metaImage,
+          status: 'WANT', 
+          category: wishlistCategory,
+          tags: wishlistTags.split(',').map(t => t.trim()).filter(Boolean)
+        });
       } else if (activeTab === 'account') {
         if (!accountName) throw new Error('Name is required');
         await accountMutation.mutateAsync({ name: accountName, type: accountType, balance: parseFloat(accountBalance) || 0, currency: 'INR' });
@@ -304,8 +349,22 @@ export function QuickAddModal() {
               </div>
 
               <div>
-                <label className="block font-sans font-bold text-xs mb-2 uppercase tracking-widest text-[var(--ink)]">Merchant</label>
-                <input type="text" className="w-full p-3 border-2 border-[var(--ink)] focus:border-[var(--crimson)] outline-none font-sans font-bold shadow-[2px_2px_0_var(--ink)] bg-[var(--white)] text-lg" value={txMerchant} onChange={e => setTxMerchant(e.target.value)} placeholder="e.g. Swiggy" />
+                <label className="block font-sans font-bold text-xs mb-2 uppercase tracking-widest text-[var(--ink)]">
+                  {txType === 'INVESTMENT' ? 'Investment Destination' : 'Merchant'}
+                </label>
+                {txType === 'INVESTMENT' ? (
+                  <select className="w-full p-3 border-2 border-[var(--ink)] focus:border-[var(--crimson)] outline-none font-sans font-bold shadow-[2px_2px_0_var(--ink)] bg-[var(--white)] text-lg" value={txMerchant} onChange={e => setTxMerchant(e.target.value)}>
+                    <option value="" disabled>Select Destination</option>
+                    <option value="Stocks">Stocks</option>
+                    <option value="PPF">PPF</option>
+                    <option value="NPS">NPS</option>
+                    {mutualFunds.map((fund: any) => (
+                      <option key={fund.id} value={fund.name}>{fund.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input type="text" className="w-full p-3 border-2 border-[var(--ink)] focus:border-[var(--crimson)] outline-none font-sans font-bold shadow-[2px_2px_0_var(--ink)] bg-[var(--white)] text-lg" value={txMerchant} onChange={e => setTxMerchant(e.target.value)} placeholder="e.g. Swiggy" />
+                )}
               </div>
 
               <div>
@@ -405,6 +464,68 @@ export function QuickAddModal() {
                 <input type="url" autoFocus className="w-full p-4 border-4 border-[var(--ink)] focus:border-[var(--crimson)] outline-none font-sans font-bold shadow-[4px_4px_0_var(--ink)] bg-white text-lg" value={wishlistUrl} onChange={e => setWishlistUrl(e.target.value)} placeholder="https://..." />
                 <p className="mt-3 text-xs font-mono font-bold text-[var(--ink)]/60 bg-[var(--gold)]/20 p-2 border-l-4 border-[var(--gold)]">Metadata will be automatically extracted.</p>
               </div>
+              <div>
+                <label className="block font-sans font-bold text-sm mb-2 uppercase tracking-widest text-[var(--ink)]">Category</label>
+                <div className="flex flex-wrap gap-2 items-center">
+                  {allWishlistCategories.map((c: any) => (
+                    <button 
+                      key={c} 
+                      type="button" 
+                      onClick={() => setWishlistCategory(c)} 
+                      className={`px-3 py-1 font-mono font-bold text-[10px] uppercase tracking-wider border-2 border-[var(--ink)] transition-all ${wishlistCategory === c ? 'bg-[var(--crimson)] text-white shadow-[2px_2px_0_var(--ink)] -translate-y-0.5' : 'bg-white text-[var(--ink)] shadow-[1px_1px_0_var(--ink)] hover:bg-gray-50'}`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                  {isAddingCategory ? (
+                     <div className="flex items-center gap-1">
+                        <input 
+                          type="text" 
+                          className="px-2 py-1 font-mono text-[10px] border-2 border-[var(--ink)] w-24 outline-none focus:border-[var(--crimson)] shadow-[1px_1px_0_var(--ink)]" 
+                          placeholder="Name" 
+                          value={newCategoryName} 
+                          onChange={e => setNewCategoryName(e.target.value)} 
+                          autoFocus 
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            if (newCategoryName.trim()) {
+                              setWishlistCategory(newCategoryName.trim().toUpperCase());
+                              setIsAddingCategory(false);
+                              setNewCategoryName('');
+                            }
+                          }} 
+                          className="px-2 py-1 font-bold text-[10px] uppercase bg-[var(--ink)] text-white border-2 border-[var(--ink)] hover:bg-[var(--crimson)] shadow-[1px_1px_0_var(--ink)] transition-all -translate-y-0.5"
+                        >
+                          Save
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            setIsAddingCategory(false);
+                            setNewCategoryName('');
+                          }} 
+                          className="px-2 py-1 font-bold text-[10px] uppercase bg-white border-2 border-[var(--ink)] text-[var(--ink)] hover:bg-gray-50 shadow-[1px_1px_0_var(--ink)] transition-all"
+                        >
+                          Cancel
+                        </button>
+                     </div>
+                  ) : (
+                    <button 
+                      type="button" 
+                      onClick={() => setIsAddingCategory(true)} 
+                      className="px-3 py-1 font-mono font-bold text-[10px] uppercase tracking-wider border-2 border-[var(--ink)] border-dashed bg-[var(--paper-soft)] hover:bg-[var(--gold)] transition-colors"
+                    >
+                      + New
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div>
+                <label className="block font-sans font-bold text-sm mb-2 uppercase tracking-widest text-[var(--ink)]">Tags (Optional)</label>
+                <input type="text" className="w-full p-3 border-2 border-[var(--ink)] focus:border-[var(--crimson)] outline-none font-sans font-bold shadow-[2px_2px_0_var(--ink)] bg-white text-lg" value={wishlistTags} onChange={e => setWishlistTags(e.target.value)} placeholder="e.g. gift, electronics, home" />
+              </div>
             </div>
           )}
 
@@ -488,8 +609,8 @@ export function QuickAddModal() {
               <div>
                 <label className="block font-sans font-bold text-xs mb-2 uppercase tracking-widest text-[var(--ink)]">Type</label>
                 <div className="flex flex-wrap gap-2">
-                  {['MUTUAL_FUND', 'STOCKS', 'FD', 'CRYPTO'].map((t) => (
-                    <button key={t} type="button" onClick={() => setInvType(t)} className={`px-4 py-2 font-mono font-bold text-xs uppercase tracking-wider border-2 border-[var(--ink)] transition-all ${invType === t ? 'bg-[var(--success)] text-white shadow-[2px_2px_0_var(--ink)] -translate-y-0.5' : 'bg-white text-[var(--ink)] shadow-[1px_1px_0_var(--ink)] hover:bg-gray-50'}`}>
+                  {['MUTUAL_FUND', 'STOCKS', 'PPF', 'NPS'].map((t) => (
+                    <button key={t} type="button" onClick={() => setInvType(t)} className={`px-3 py-1 font-mono font-bold text-[10px] uppercase tracking-wider border-2 border-[var(--ink)] transition-all ${invType === t ? 'bg-[var(--gold)] text-[var(--ink)] shadow-[2px_2px_0_var(--ink)] -translate-y-0.5' : 'bg-white text-[var(--ink)] shadow-[1px_1px_0_var(--ink)] hover:bg-gray-50'}`}>
                       {t.replace('_', ' ')}
                     </button>
                   ))}

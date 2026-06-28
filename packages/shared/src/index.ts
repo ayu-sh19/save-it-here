@@ -39,15 +39,16 @@ export type IdeaUpdateInput = z.infer<typeof IdeaUpdateSchema>;
 
 export const WishlistItemSchema = z.object({
   title: z.string().min(1, "Title is required"),
-  description: z.string().optional(),
-  url: z.string().url().optional().or(z.literal('')),
-  price: z.number().nonnegative().optional(),
+  description: z.string().nullish(),
+  url: z.string().url().nullish().or(z.literal('')),
+  price: z.number().nonnegative().nullish(),
   currency: z.string().default("INR"),
-  status: z.enum(["WANT", "BOUGHT", "DROPPED"]),
-  category: z.enum(["TECH", "BOOK", "MOVIE", "OTHER"]),
-  author: z.string().optional(),
-  genre: z.string().optional(),
-  imageUrl: z.string().url().optional().or(z.literal('')),
+  status: z.string(),
+  category: z.string(),
+  author: z.string().nullish(),
+  genre: z.string().nullish(),
+  imageUrl: z.string().url().nullish().or(z.literal('')),
+  tags: z.array(z.string()).optional(),
 });
 
 export type WishlistItemInput = z.infer<typeof WishlistItemSchema>;

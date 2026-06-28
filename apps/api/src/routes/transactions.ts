@@ -129,6 +129,32 @@ transactionsRouter.post('/', async (c) => {
       });
     }
 
+    if (transactionType === 'INVESTMENT' && body.merchant) {
+      // Find an existing investment account with this name
+      let invAcc = await tx.investmentAccount.findFirst({
+        where: { userId: MOCK_USER_ID, name: body.merchant }
+      });
+
+      if (!invAcc) {
+        // Create one on the fly if it doesn't exist (e.g. Stocks, PPF, NPS)
+        invAcc = await tx.investmentAccount.create({
+          data: {
+            userId: MOCK_USER_ID,
+            name: body.merchant,
+            type: body.merchant === 'PPF' ? 'PPF' : body.merchant === 'NPS' ? 'NPS' : body.merchant === 'Stocks' ? 'STOCKS' : 'MUTUAL_FUND',
+          }
+        });
+      }
+
+      await tx.investmentAccount.update({
+        where: { id: invAcc.id },
+        data: {
+          investedAmount: { increment: finalAmount },
+          currentValue: { increment: finalAmount } // Assuming current value increases by invested amount initially
+        }
+      });
+    }
+
     return c.json({ data: transaction }, 201);
   });
 });
@@ -152,6 +178,16 @@ transactionsRouter.put('/:id', async (c) => {
         await tx.account.update({
           where: { id: original.accountId },
           data: { balance: { increment: revertBalanceChange } }
+        });
+      }
+
+      if (original.type === 'INVESTMENT' && original.merchant) {
+        await tx.investmentAccount.updateMany({
+          where: { userId: MOCK_USER_ID, name: original.merchant },
+          data: {
+            investedAmount: { decrement: original.amount },
+            currentValue: { decrement: original.amount }
+          }
         });
       }
 
@@ -197,6 +233,30 @@ transactionsRouter.put('/:id', async (c) => {
         });
       }
 
+      if (updated.type === 'INVESTMENT' && updated.merchant) {
+        let invAcc = await tx.investmentAccount.findFirst({
+          where: { userId: MOCK_USER_ID, name: updated.merchant }
+        });
+
+        if (!invAcc) {
+          invAcc = await tx.investmentAccount.create({
+            data: {
+              userId: MOCK_USER_ID,
+              name: updated.merchant,
+              type: updated.merchant === 'PPF' ? 'PPF' : updated.merchant === 'NPS' ? 'NPS' : updated.merchant === 'Stocks' ? 'STOCKS' : 'MUTUAL_FUND',
+            }
+          });
+        }
+
+        await tx.investmentAccount.update({
+          where: { id: invAcc.id },
+          data: {
+            investedAmount: { increment: updated.amount },
+            currentValue: { increment: updated.amount }
+          }
+        });
+      }
+
       return c.json({ data: updated });
     });
   } catch (e) {
@@ -236,6 +296,16 @@ transactionsRouter.post('/:id/refund', async (c) => {
         data: { balance: { increment: refundAmount } }
       });
 
+      if (original.type === 'INVESTMENT' && original.merchant) {
+        await tx.investmentAccount.updateMany({
+          where: { userId: MOCK_USER_ID, name: original.merchant },
+          data: {
+            investedAmount: { decrement: refundAmount },
+            currentValue: { decrement: refundAmount }
+          }
+        });
+      }
+
       return c.json({ data: refundTx });
     });
   } catch (e) {
@@ -265,6 +335,16 @@ transactionsRouter.delete('/:id', async (c) => {
         await tx.account.update({
           where: { id: original.accountId },
           data: { balance: { increment: revertBalanceChange } }
+        });
+      }
+
+      if (original.type === 'INVESTMENT' && original.merchant) {
+        await tx.investmentAccount.updateMany({
+          where: { userId: MOCK_USER_ID, name: original.merchant },
+          data: {
+            investedAmount: { decrement: original.amount },
+            currentValue: { decrement: original.amount }
+          }
         });
       }
     });

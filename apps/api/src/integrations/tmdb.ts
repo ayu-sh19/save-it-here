@@ -1,3 +1,27 @@
+let tmdbGenreCache: Record<number, string> | null = null;
+
+async function getTmdbGenres(apiKey: string) {
+  if (tmdbGenreCache) return tmdbGenreCache;
+  try {
+    const res = await fetch(`https://api.themoviedb.org/3/genre/movie/list?api_key=${apiKey}&language=en-US`);
+    const data = await res.json();
+    const map: Record<number, string> = {};
+    for (const g of data.genres || []) {
+      map[g.id] = g.name;
+    }
+    const tvRes = await fetch(`https://api.themoviedb.org/3/genre/tv/list?api_key=${apiKey}&language=en-US`);
+    const tvData = await tvRes.json();
+    for (const g of tvData.genres || []) {
+      map[g.id] = g.name; // merge tv genres
+    }
+    tmdbGenreCache = map;
+    return map;
+  } catch (e) {
+    console.error('Failed to fetch TMDB genres', e);
+    return {};
+  }
+}
+
 export async function searchMovies(query: string) {
   const apiKey = process.env.TMDB_API_KEY;
   if (!apiKey) {
@@ -10,33 +34,17 @@ export async function searchMovies(query: string) {
         imageUrl: 'https://images.unsplash.com/photo-1440404653325-ab127d49abc1?q=80&w=500&auto=format&fit=crop',
         releaseDate: '2026-01-01',
         mediaType: 'movie',
-        rating: 8.5
-      },
-      {
-        id: 'mock-movie-2',
-        title: 'Inception (Mock)',
-        description: 'A thief who steals corporate secrets through the use of dream-sharing technology.',
-        imageUrl: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=500&auto=format&fit=crop',
-        releaseDate: '2010-07-16',
-        mediaType: 'movie',
-        rating: 8.8
-      },
-      {
-        id: 'mock-tv-1',
-        title: 'The Matrix (Mock)',
-        description: 'A computer hacker learns from mysterious rebels about the true nature of his reality and his role in the war against its controllers.',
-        imageUrl: 'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?q=80&w=500&auto=format&fit=crop',
-        releaseDate: '1999-03-31',
-        mediaType: 'movie',
-        rating: 8.7
+        rating: 8.5,
+        genres: 'Action, Sci-Fi'
       }
     ];
   }
 
   try {
-    const response = await fetch(
-      `https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&query=${encodeURIComponent(query)}&page=1`
-    );
+    const [genresMap, response] = await Promise.all([
+      getTmdbGenres(apiKey),
+      fetch(`https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&query=${encodeURIComponent(query)}&page=1`)
+    ]);
     
     if (!response.ok) {
       throw new Error(`TMDB API Error: ${response.statusText}`);
@@ -51,10 +59,11 @@ export async function searchMovies(query: string) {
         id: item.id.toString(),
         title: item.title || item.name,
         description: item.overview,
-        imageUrl: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : null,
+        imageUrl: item.poster_path ? `https://image.tmdb.org/t/p/w200${item.poster_path}` : null,
         releaseDate: item.release_date || item.first_air_date,
         mediaType: item.media_type,
         rating: item.vote_average,
+        genres: (item.genre_ids || []).map((id: number) => genresMap[id]).filter(Boolean).join(', ')
       }));
   } catch (error) {
     console.error('Failed to search TMDB:', error);

@@ -1,43 +1,81 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { discoverMovies, createWishlist } from '../lib/api';
-import { Search, Film, Loader2 } from 'lucide-react';
+import { fetchWishlist, createWishlist, discoverMovies } from '../lib/api';
+import { MediaSearchDropdown } from '../components/media/MediaSearchDropdown';
+import { MediaCard } from '../components/media/MediaCard';
 
 export function Movies() {
-  const [query, setQuery] = useState('Inception');
-  const [searchQuery, setSearchQuery] = useState('Inception');
-  const [savingId, setSavingId] = useState<number | null>(null);
   const queryClient = useQueryClient();
+  const [selectedState, setSelectedState] = useState<string>('all');
+  const [selectedGenre, setSelectedGenre] = useState<string>('all');
 
-  const { data: movies, isLoading } = useQuery({
-    queryKey: ['movies', searchQuery],
-    queryFn: () => discoverMovies(searchQuery),
-    enabled: !!searchQuery,
+  // Fetch saved movies (using wishlist API but filtered)
+  const { data: allItems, isLoading } = useQuery({
+    queryKey: ['wishlist'],
+    queryFn: fetchWishlist,
   });
 
-  const wishlistMutation = useMutation({
+  const saveMutation = useMutation({
     mutationFn: createWishlist,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['wishlist'] });
-      setSavingId(null);
-    },
-    onError: () => setSavingId(null)
+    }
   });
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSearchQuery(query);
-  };
+  const savedMovies = useMemo(() => {
+    return (allItems || []).filter((item: any) => item.category === 'MOVIE');
+  }, [allItems]);
 
-  const handleSaveToWishlist = (movie: any) => {
-    setSavingId(movie.id);
-    wishlistMutation.mutate({
+  // Extract unique genres from saved movies
+  const allGenres = useMemo(() => {
+    const genres = new Set<string>();
+    savedMovies.forEach((m: any) => {
+      if (m.genre) {
+        m.genre.split(',').forEach((g: string) => genres.add(g.trim()));
+      }
+    });
+    return Array.from(genres).sort();
+  }, [savedMovies]);
+
+  const filteredMovies = useMemo(() => {
+    return savedMovies.filter((m: any) => {
+      const matchState = selectedState === 'all' || m.status === selectedState;
+      const matchGenre = selectedGenre === 'all' || (m.genre && m.genre.includes(selectedGenre));
+      return matchState && matchGenre;
+    });
+  }, [savedMovies, selectedState, selectedGenre]);
+
+  const handleSelectMovie = (movie: any) => {
+    const existing = savedMovies.find((m: any) => m.title === movie.title);
+    if (existing) {
+      const matchState = selectedState === 'all' || existing.status === selectedState;
+      const matchGenre = selectedGenre === 'all' || (existing.genre && existing.genre.includes(selectedGenre));
+      
+      if (!matchState) setSelectedState('all');
+      if (!matchGenre) setSelectedGenre('all');
+      
+      setTimeout(() => {
+        const el = document.getElementById(`media-${existing.id}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.style.transition = 'box-shadow 0.3s';
+          el.style.boxShadow = '0 0 0 4px var(--crimson), 6px 6px 0 var(--ink)';
+          setTimeout(() => {
+            el.style.boxShadow = '';
+          }, 2000);
+        }
+      }, 100);
+      return;
+    }
+
+    saveMutation.mutate({
       title: movie.title,
       description: movie.description,
       url: `https://www.themoviedb.org/movie/${movie.id}`,
       imageUrl: movie.imageUrl || '',
       category: 'MOVIE',
-      status: 'WANT'
+      status: 'watchlist',
+      genre: movie.genres,
     });
   };
 
@@ -49,56 +87,67 @@ export function Movies() {
         </h1>
       </div>
 
-      <form onSubmit={handleSearch} className="mb-8 flex gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--ink-60)]" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search TMDB for movies..."
-            className="w-full pl-12 pr-4 py-4 border-4 border-[var(--ink)] font-sans font-bold text-lg outline-none focus:border-[var(--crimson)] shadow-[4px_4px_0_var(--ink)]"
-          />
+      <div className="mb-8 max-w-2xl">
+        <MediaSearchDropdown 
+          type="movies"
+          searchFn={discoverMovies}
+          onSelect={handleSelectMovie}
+        />
+      </div>
+
+      {savedMovies.length > 0 && (
+        <div className="flex flex-wrap gap-4 mb-8 p-4 bg-[var(--paper-soft)] border-[3px] border-[var(--ink)] shadow-[4px_4px_0_var(--ink)]">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--ink-60)]">State:</span>
+            <select 
+              value={selectedState} 
+              onChange={e => setSelectedState(e.target.value)}
+              className="bg-[var(--white)] border-2 border-[var(--ink)] p-1 text-sm outline-none font-bold shadow-[2px_2px_0_var(--ink)]"
+            >
+              <option value="all">All</option>
+              <option value="watchlist">Watchlist</option>
+              <option value="watched">Watched</option>
+              <option value="favorites">Favorites</option>
+            </select>
+          </div>
+          
+          {allGenres.length > 0 && (
+            <div className="flex items-center gap-2 ml-4">
+              <span className="font-mono text-xs font-bold uppercase tracking-widest text-[var(--ink-60)]">Genre:</span>
+              <select 
+                value={selectedGenre} 
+                onChange={e => setSelectedGenre(e.target.value)}
+                className="bg-[var(--white)] border-2 border-[var(--ink)] p-1 text-sm outline-none font-bold shadow-[2px_2px_0_var(--ink)]"
+              >
+                <option value="all">All Genres</option>
+                {allGenres.map(g => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
-        <button type="submit" className="bg-[var(--ink)] text-[var(--paper)] px-8 font-display font-bold uppercase tracking-widest border-4 border-[var(--ink)] shadow-[4px_4px_0_var(--crimson)] hover:-translate-y-1 hover:shadow-[6px_6px_0_var(--crimson)] transition-all">
-          Search
-        </button>
-      </form>
+      )}
 
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-20">
+        <div className="flex justify-center p-12">
           <div className="w-8 h-8 border-4 border-[var(--ink)] border-t-[var(--crimson)] rounded-full animate-spin"></div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {movies?.map((movie: any) => (
-            <div key={movie.id} className="bg-[var(--paper)] border-4 border-[var(--ink)] shadow-[6px_6px_0_var(--ink)] flex flex-col hover:-translate-y-1 hover:shadow-[8px_8px_0_var(--ink)] transition-all">
-              {movie.imageUrl ? (
-                <img 
-                  src={movie.imageUrl} 
-                  alt={movie.title}
-                  className="w-full aspect-[2/3] object-cover border-b-4 border-[var(--ink)]"
-                />
-              ) : (
-                <div className="w-full aspect-[2/3] bg-[var(--paper-soft)] border-b-4 border-[var(--ink)] flex items-center justify-center">
-                  <Film className="w-12 h-12 text-[var(--ink-30)]" />
-                </div>
-              )}
-              <div className="p-4 flex-1 flex flex-col">
-                <h3 className="font-display font-bold text-lg leading-tight mb-2 line-clamp-2">{movie.title}</h3>
-                <p className="font-mono text-xs text-[var(--ink-60)] mb-4">{movie.releaseDate?.substring(0, 4)}</p>
-                <div className="mt-auto pt-4 border-t-2 border-dashed border-[var(--ink-30)]">
-                  <button 
-                    onClick={() => handleSaveToWishlist(movie)}
-                    disabled={savingId === movie.id}
-                    className="w-full flex items-center justify-center py-2 bg-[var(--paper-soft)] border-2 border-[var(--ink)] font-display text-xs font-bold uppercase tracking-widest hover:bg-[var(--gold)] transition-colors disabled:opacity-50"
-                  >
-                    {savingId === movie.id ? <Loader2 className="w-4 h-4 animate-spin" /> : '+ Wishlist'}
-                  </button>
-                </div>
-              </div>
-            </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {filteredMovies.map((movie: any) => (
+            <MediaCard key={movie.id} item={movie} type="movies" />
           ))}
+          {filteredMovies.length === 0 && savedMovies.length > 0 && (
+            <div className="col-span-full p-12 text-center border-2 border-dashed border-[var(--ink-30)] font-mono text-[var(--ink-60)]">
+              No movies match your filters.
+            </div>
+          )}
+          {savedMovies.length === 0 && (
+            <div className="col-span-full p-12 text-center border-[3px] border-[var(--ink)] shadow-[6px_6px_0_var(--ink)] bg-[var(--white)] font-mono text-lg font-bold">
+              Start by searching for a movie above!
+            </div>
+          )}
         </div>
       )}
     </div>

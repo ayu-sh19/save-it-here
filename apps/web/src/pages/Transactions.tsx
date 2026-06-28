@@ -177,6 +177,19 @@ export function Transactions() {
                         Refund
                       </button>
                     )}
+                    <button onClick={() => {
+                      setConfirmState({
+                        isOpen: true,
+                        title: 'Delete Transaction',
+                        message: `Are you sure you want to delete this transaction for ${tx.merchant}? This action cannot be undone.`,
+                        action: async () => {
+                          await fetch(`http://localhost:3000/api/v1/transactions/${tx.id}`, { method: 'DELETE' });
+                          window.location.reload();
+                        }
+                      });
+                    }} className="px-2 py-0.5 border border-[var(--ink)] bg-[var(--paper)] text-[9px] font-bold uppercase hover:bg-[var(--crimson)] hover:text-white transition-colors">
+                      Delete
+                    </button>
                   </div>
                 </div>
               </div>
