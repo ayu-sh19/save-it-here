@@ -49,7 +49,7 @@ archives.post('/', async (c) => {
       return c.json({ success: false, error: result.error.errors }, 400);
     }
 
-    const { platform, url, authorHandle, caption, ocrText, userCategory } = result.data;
+    const { platform, url, authorHandle, caption, ocrText, userCategory, tags = [], mediaUrls = [], embedHtml } = result.data;
 
     const item = await db.archiveItem.create({
       data: {
@@ -60,6 +60,20 @@ archives.post('/', async (c) => {
         caption,
         ocrText,
         userCategory,
+        embedHtml,
+        tags: {
+          connectOrCreate: tags.map((tag: string) => ({
+            where: { userId_name: { userId: MOCK_USER_ID, name: tag.trim().toLowerCase() } },
+            create: { userId: MOCK_USER_ID, name: tag.trim().toLowerCase() }
+          }))
+        },
+        media: {
+          create: mediaUrls.map((mediaUrl: string, idx: number) => ({
+            url: mediaUrl,
+            type: 'IMAGE',
+            order: idx
+          }))
+        }
       },
       include: {
         tags: true,
@@ -70,6 +84,34 @@ archives.post('/', async (c) => {
     return c.json({ success: true, data: item }, 201);
   } catch (error) {
     console.error('Failed to create archive item:', error);
+    return c.json({ success: false, error: 'Internal Server Error' }, 500);
+  }
+});
+
+// PATCH archive item (tags etc)
+archives.patch('/:id', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const { tags } = await c.req.json();
+
+    if (tags !== undefined) {
+      await db.archiveItem.update({
+        where: { id, userId: MOCK_USER_ID },
+        data: {
+          tags: {
+            set: [], // Disconnect old
+            connectOrCreate: tags.map((tag: string) => ({
+              where: { userId_name: { userId: MOCK_USER_ID, name: tag.trim().toLowerCase() } },
+              create: { userId: MOCK_USER_ID, name: tag.trim().toLowerCase() }
+            }))
+          }
+        }
+      });
+    }
+
+    return c.json({ success: true, message: 'Archive item updated' });
+  } catch (error) {
+    console.error('Failed to update archive item:', error);
     return c.json({ success: false, error: 'Internal Server Error' }, 500);
   }
 });

@@ -14,6 +14,7 @@ import investmentsRouter from './routes/investments'
 import metadataRouter from './routes/metadata'
 import discoverRouter from './routes/discover'
 import searchRouter from './routes/search'
+import tagsRouter from './routes/tags'
 
 const app = new Hono()
 
@@ -38,6 +39,7 @@ app.route('/api/v1/investments', investmentsRouter)
 app.route('/api/v1/metadata', metadataRouter)
 app.route('/api/v1/discover', discoverRouter)
 app.route('/api/v1/search', searchRouter)
+app.route('/api/v1/tags', tagsRouter)
 
 const port = 3000
 console.log(`Server is running on port ${port}`)

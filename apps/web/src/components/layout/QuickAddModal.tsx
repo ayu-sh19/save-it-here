@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { useQuickAddStore, type QuickAddTab } from '../../store/quickAdd';
-import { createIdea, createTransaction, updateTransaction, createWishlist, fetchAccounts, fetchCategories, createAccount, createCategory, createLending, createInvestmentAccount, createSavingsGoal, fetchInvestments, parseUrl, fetchWishlist } from '../../lib/api';
+import { createIdea, createTransaction, updateTransaction, createWishlist, fetchAccounts, fetchCategories, createAccount, createCategory, createLending, createInvestmentAccount, createSavingsGoal, fetchInvestments, parseUrl, fetchWishlist, createArchive, fetchTags } from '../../lib/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { TagAutocomplete } from '../ui/TagAutocomplete';
 
 export function QuickAddModal() {
   const { isOpen, closeQuickAdd, activeTab, setActiveTab, prefillData } = useQuickAddStore();
@@ -15,6 +16,7 @@ export function QuickAddModal() {
   const { data: categoriesData } = useQuery({ queryKey: ['categories'], queryFn: fetchCategories, enabled: isOpen });
   const { data: investmentsData } = useQuery({ queryKey: ['investments'], queryFn: fetchInvestments, enabled: isOpen });
   const { data: wishlistData } = useQuery({ queryKey: ['wishlist'], queryFn: fetchWishlist, enabled: isOpen && activeTab === 'wishlist' });
+  const { data: tags } = useQuery({ queryKey: ['tags'], queryFn: fetchTags, enabled: isOpen });
   
   const accounts = accountsData || [];
   const categories = categoriesData || [];
@@ -33,6 +35,7 @@ export function QuickAddModal() {
   const [txType, setTxType] = useState(prefillData.txType || 'EXPENSE');
   const [txAccountId, setTxAccountId] = useState(prefillData.txAccountId || '');
   const [txCategoryId, setTxCategoryId] = useState(prefillData.txCategoryId || 'none');
+  const [txDate, setTxDate] = useState(prefillData.date ? new Date(prefillData.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
   const [isEditMode, setIsEditMode] = useState(!!prefillData.id);
 
   // Group Expense & Splits State
@@ -46,6 +49,9 @@ export function QuickAddModal() {
   const [wishlistUrl, setWishlistUrl] = useState('');
   const [wishlistTags, setWishlistTags] = useState('');
   const [wishlistCategory, setWishlistCategory] = useState('OTHER');
+
+  const [archiveUrl, setArchiveUrl] = useState('');
+  const [archiveTags, setArchiveTags] = useState('');
 
   const allWishlistCategories = Array.from(new Set([...defaultWishlistCategories, ...wishlistItems.map((i: any) => i.category).filter(Boolean), wishlistCategory]));
 
@@ -87,6 +93,7 @@ export function QuickAddModal() {
       if (prefillData.type) setTxType(prefillData.type);
       if (prefillData.accountId) setTxAccountId(prefillData.accountId);
       if (prefillData.categoryId) setTxCategoryId(prefillData.categoryId);
+      if (prefillData.date) setTxDate(new Date(prefillData.date).toISOString().split('T')[0]);
       
       setIsEditMode(!!prefillData.id);
       setIsGroupExpense(prefillData.type === 'GROUP_EXPENSE');
@@ -100,10 +107,12 @@ export function QuickAddModal() {
       setTxAmount(''); setTxMerchant('');
       setTxType('EXPENSE');
       setTxCategoryId('none');
+      setTxDate(new Date().toISOString().split('T')[0]);
       setIsEditMode(false);
       setIsGroupExpense(false); setMyShare(''); setParticipants([]);
       setIsSplit(false); setSplits([]);
       setWishlistUrl(''); setWishlistTags(''); setWishlistCategory('OTHER');
+      setArchiveUrl(''); setArchiveTags('');
       setAccountName(''); setAccountBalance('');
       setCategoryName('');
       setIsAddingCategory(false); setNewCategoryName('');
@@ -145,6 +154,7 @@ export function QuickAddModal() {
         setTxAmount('');
         setTxMerchant('');
         setTxCategoryId('none');
+        setTxDate(new Date().toISOString().split('T')[0]);
         setIdeaTitle('');
         setIdeaContent('');
         setWishlistUrl('');
@@ -156,6 +166,11 @@ export function QuickAddModal() {
   const wishlistMutation = useMutation({
     mutationFn: createWishlist,
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['wishlist'] }); closeQuickAdd(); }
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: createArchive,
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['archives'] }); closeQuickAdd(); }
   });
 
   const accountMutation = useMutation({
@@ -201,7 +216,7 @@ export function QuickAddModal() {
           merchant: txMerchant,
           type: txType,
           paymentMethod: 'UPI',
-          date: prefillData.date ? prefillData.date : new Date().toISOString(),
+          date: new Date(txDate).toISOString(),
           accountId: txAccountId,
           categoryId: txCategoryId === 'none' ? undefined : txCategoryId
         };
@@ -246,6 +261,39 @@ export function QuickAddModal() {
           category: wishlistCategory,
           tags: wishlistTags.split(',').map(t => t.trim()).filter(Boolean)
         });
+      } else if (activeTab === 'archive') {
+        if (!archiveUrl) throw new Error('URL is required');
+        
+        let metaTitle = 'Unknown Link';
+        let metaDesc = '';
+        let mediaUrls: string[] = [];
+        let embedHtml: string | undefined;
+        
+        try {
+          const meta = await parseUrl(archiveUrl);
+          metaTitle = meta.title || metaTitle;
+          metaDesc = meta.description || '';
+          embedHtml = meta.embedHtml;
+          if (meta.images && meta.images.length > 0) {
+             mediaUrls = meta.images;
+          } else if (meta.image) {
+             mediaUrls = [meta.image];
+          }
+        } catch (e) {
+          console.error("Failed to extract metadata");
+        }
+        
+        const platform = archiveUrl.includes('instagram.com') ? 'INSTAGRAM' : 
+                         archiveUrl.includes('twitter.com') || archiveUrl.includes('x.com') ? 'TWITTER' : 'WEB';
+
+        await archiveMutation.mutateAsync({ 
+          url: archiveUrl, 
+          platform,
+          caption: metaDesc || metaTitle,
+          mediaUrls,
+          embedHtml,
+          tags: archiveTags.split(',').map(t => t.trim()).filter(Boolean)
+        });
       } else if (activeTab === 'account') {
         if (!accountName) throw new Error('Name is required');
         await accountMutation.mutateAsync({ name: accountName, type: accountType, balance: parseFloat(accountBalance) || 0, currency: 'INR' });
@@ -271,7 +319,7 @@ export function QuickAddModal() {
 
   if (!isOpen) return null;
 
-  const tabs: QuickAddTab[] = ['transaction', 'idea', 'wishlist', 'lending', 'investment', 'goal', 'account', 'category'];
+  const tabs: QuickAddTab[] = ['transaction', 'idea', 'wishlist', 'archive', 'lending', 'investment', 'goal', 'account', 'category'];
 
   return (
     <div className="fixed inset-0 z-[100] flex items-start justify-end md:items-center md:justify-center pt-[10vh] md:pt-0 bg-[var(--ink)]/50 backdrop-blur-sm">
@@ -348,23 +396,29 @@ export function QuickAddModal() {
                 </button>
               </div>
 
-              <div>
-                <label className="block font-sans font-bold text-xs mb-2 uppercase tracking-widest text-[var(--ink)]">
-                  {txType === 'INVESTMENT' ? 'Investment Destination' : 'Merchant'}
-                </label>
-                {txType === 'INVESTMENT' ? (
-                  <select className="w-full p-3 border-2 border-[var(--ink)] focus:border-[var(--crimson)] outline-none font-sans font-bold shadow-[2px_2px_0_var(--ink)] bg-[var(--white)] text-lg" value={txMerchant} onChange={e => setTxMerchant(e.target.value)}>
-                    <option value="" disabled>Select Destination</option>
-                    <option value="Stocks">Stocks</option>
-                    <option value="PPF">PPF</option>
-                    <option value="NPS">NPS</option>
-                    {mutualFunds.map((fund: any) => (
-                      <option key={fund.id} value={fund.name}>{fund.name}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <input type="text" className="w-full p-3 border-2 border-[var(--ink)] focus:border-[var(--crimson)] outline-none font-sans font-bold shadow-[2px_2px_0_var(--ink)] bg-[var(--white)] text-lg" value={txMerchant} onChange={e => setTxMerchant(e.target.value)} placeholder="e.g. Swiggy" />
-                )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-sans font-bold text-xs mb-2 uppercase tracking-widest text-[var(--ink)]">Date</label>
+                  <input type="date" className="w-full p-3 border-2 border-[var(--ink)] focus:border-[var(--crimson)] outline-none font-mono font-bold shadow-[2px_2px_0_var(--ink)] bg-[var(--white)] text-lg h-[52px]" value={txDate} onChange={e => setTxDate(e.target.value)} />
+                </div>
+                <div>
+                  <label className="block font-sans font-bold text-xs mb-2 uppercase tracking-widest text-[var(--ink)]">
+                    {txType === 'INVESTMENT' ? 'Investment Destination' : 'Merchant'}
+                  </label>
+                  {txType === 'INVESTMENT' ? (
+                    <select className="w-full p-3 border-2 border-[var(--ink)] focus:border-[var(--crimson)] outline-none font-sans font-bold shadow-[2px_2px_0_var(--ink)] bg-[var(--white)] text-lg h-[52px]" value={txMerchant} onChange={e => setTxMerchant(e.target.value)}>
+                      <option value="" disabled>Select Destination</option>
+                      <option value="Stocks">Stocks</option>
+                      <option value="PPF">PPF</option>
+                      <option value="NPS">NPS</option>
+                      {mutualFunds.map((fund: any) => (
+                        <option key={fund.id} value={fund.name}>{fund.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input type="text" className="w-full p-3 border-2 border-[var(--ink)] focus:border-[var(--crimson)] outline-none font-sans font-bold shadow-[2px_2px_0_var(--ink)] bg-[var(--white)] text-lg h-[52px]" value={txMerchant} onChange={e => setTxMerchant(e.target.value)} placeholder="e.g. Swiggy" />
+                  )}
+                </div>
               </div>
 
               <div>
@@ -524,7 +578,33 @@ export function QuickAddModal() {
               </div>
               <div>
                 <label className="block font-sans font-bold text-sm mb-2 uppercase tracking-widest text-[var(--ink)]">Tags (Optional)</label>
-                <input type="text" className="w-full p-3 border-2 border-[var(--ink)] focus:border-[var(--crimson)] outline-none font-sans font-bold shadow-[2px_2px_0_var(--ink)] bg-white text-lg" value={wishlistTags} onChange={e => setWishlistTags(e.target.value)} placeholder="e.g. gift, electronics, home" />
+                <TagAutocomplete
+                  value={wishlistTags}
+                  onChange={setWishlistTags}
+                  tags={tags || []}
+                  placeholder="e.g. gift, electronics, home"
+                  className="p-3 text-lg h-[52px]"
+                />
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'archive' && (
+            <div className="space-y-6">
+              <div>
+                <label className="block font-sans font-bold text-sm mb-2 uppercase tracking-widest text-[var(--ink)]">Social Media / Web URL</label>
+                <input type="url" autoFocus className="w-full p-4 border-4 border-[var(--ink)] focus:border-[var(--crimson)] outline-none font-sans font-bold shadow-[4px_4px_0_var(--ink)] bg-white text-lg" value={archiveUrl} onChange={e => setArchiveUrl(e.target.value)} placeholder="https://instagram.com/p/..." />
+                <p className="mt-3 text-xs font-mono font-bold text-[var(--ink)]/60 bg-[var(--gold)]/20 p-2 border-l-4 border-[var(--gold)]">Platform and media will be automatically detected.</p>
+              </div>
+              <div>
+                <label className="block font-sans font-bold text-sm mb-2 uppercase tracking-widest text-[var(--ink)]">Tags (Optional)</label>
+                <TagAutocomplete
+                  value={archiveTags}
+                  onChange={setArchiveTags}
+                  tags={tags || []}
+                  placeholder="e.g. design, inspiration, tech"
+                  className="p-3 text-lg h-[52px]"
+                />
               </div>
             </div>
           )}

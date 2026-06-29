@@ -60,6 +60,9 @@ export const ArchiveItemSchema = z.object({
   caption: z.string().optional(),
   ocrText: z.string().optional(),
   userCategory: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  mediaUrls: z.array(z.string()).optional(),
+  embedHtml: z.string().optional(),
 });
 
 export type ArchiveItemInput = z.infer<typeof ArchiveItemSchema>;

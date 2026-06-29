@@ -54,6 +54,21 @@ export const fetchArchives = async () => {
   return data.data;
 };
 
+export const createArchive = async (item: any) => {
+  const { data } = await api.post('/archives', item);
+  return data.data;
+};
+
+export const updateArchiveItem = async (id: string, updates: any) => {
+  const { data } = await api.patch(`/archives/${id}`, updates);
+  return data;
+};
+
+export const deleteArchive = async (id: string) => {
+  const { data } = await api.delete(`/archives/${id}`);
+  return data;
+};
+
 export const fetchDashboard = async (params?: { month?: number; year?: number }) => {
   let url = '/dashboard/financial';
   if (params) {
@@ -189,5 +204,10 @@ export const deleteWishlistItem = async (id: string) => {
 
 export const parseUrl = async (url: string) => {
   const { data } = await api.post('/metadata/parse-url', { url });
+  return data.data;
+};
+
+export const fetchTags = async () => {
+  const { data } = await api.get('/tags');
   return data.data;
 };

@@ -9,9 +9,82 @@ export async function parseUrl(url: string) {
   let title = '';
   let description = '';
   let image: string | null = null;
+  let images: string[] = [];
   let siteName = domain;
   let type = 'website';
   let finalUrl = url;
+
+  let embedHtml = undefined;
+
+  // Twitter/X oEmbed integration
+  if (url.includes('twitter.com/') || url.includes('x.com/')) {
+    try {
+      // Use publish.twitter.com which doesn't require auth
+      const oembedUrl = `https://publish.twitter.com/oembed?url=${encodeURIComponent(url)}`;
+      const res = await fetch(oembedUrl);
+      
+      if (res.ok) {
+        const data = await res.json();
+        embedHtml = data.html;
+        
+        // Parse the caption (tweet text) from the blockquote in the html
+        if (data.html) {
+          const $ = cheerio.load(data.html);
+          description = $('blockquote p').text() || '';
+        }
+        
+        title = `Tweet by ${data.author_name || 'User'}`;
+        siteName = 'Twitter';
+        type = 'article';
+        
+        return {
+          title,
+          description,
+          image: null,
+          images: [],
+          siteName,
+          type,
+          url: finalUrl,
+          embedHtml
+        };
+      }
+    } catch (err) {
+      console.error('Twitter oEmbed failed:', err);
+    }
+  }
+
+  // Instagram integration (generate iframe directly)
+  if (url.includes('instagram.com/')) {
+    let postId = 'ig';
+    const match = url.match(/(?:p|reel|tv)\/([^/?#&]+)/);
+    if (match && match[1]) {
+      postId = match[1];
+    }
+    
+    // We construct the official embed iframe natively
+    embedHtml = `<iframe src="https://www.instagram.com/p/${postId}/embed/captioned/" width="100%" height="540" frameborder="0" scrolling="no" allowtransparency="true"></iframe>`;
+    
+    // We provide a fallback title/description, the actual content is in the iframe
+    title = `Instagram Post`;
+    description = 'View this post on Instagram';
+    image = null;
+    images = [];
+    siteName = 'Instagram';
+    type = 'article';
+    
+    return {
+      title,
+      description,
+      image,
+      images,
+      siteName,
+      type,
+      url: finalUrl,
+      embedHtml
+    };
+  }
+
+
 
   try {
     const { result } = await ogs({
@@ -26,9 +99,17 @@ export async function parseUrl(url: string) {
       }
     });
 
-    title = result.ogTitle ?? result.twitterTitle ?? '';
-    description = result.ogDescription ?? result.twitterDescription ?? '';
-    image = result.ogImage?.[0]?.url ?? result.twitterImage?.[0]?.url ?? null;
+    title = title || result.ogTitle || result.twitterTitle || '';
+    description = description || result.ogDescription || result.twitterDescription || '';
+    
+    if (!image) {
+      image = result.ogImage?.[0]?.url ?? result.twitterImage?.[0]?.url ?? null;
+    }
+    
+    if (images.length === 0 && image) {
+      images = [image];
+    }
+    
     siteName = result.ogSiteName ?? domain;
     type = result.ogType ?? 'website';
     finalUrl = result.ogUrl ?? url;
@@ -68,11 +149,12 @@ export async function parseUrl(url: string) {
       if (fallbackDesc) {
          description = fallbackDesc.trim() || description;
       }
-      if (fallbackImage) {
+      if (fallbackImage && !image) {
          try {
            image = fallbackImage.startsWith('http') ? fallbackImage : new URL(fallbackImage, url).toString();
+           if (images.length === 0) images = [image];
          } catch {
-           image = null;
+           if (!image) image = null;
          }
       }
     } catch (fallbackError) {
@@ -84,6 +166,7 @@ export async function parseUrl(url: string) {
     title: title || url,
     description,
     image,
+    images,
     siteName,
     type,
     url: finalUrl,

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, X, Loader2, ArrowRight } from 'lucide-react';
 import { searchGlobal } from '../../lib/api';
+import { useNavigate } from 'react-router-dom';
 
 interface SearchResult {
   id: string;
@@ -20,6 +21,7 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (isOpen) {
@@ -52,6 +54,31 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleResultClick = (result: SearchResult) => {
+    onClose();
+    
+    // Map source to path
+    let path = '/';
+    if (result.source === 'ARCHIVE') path = '/archive/ig';
+    else if (result.source === 'IDEA') path = '/ideas';
+    else if (result.source === 'TRANSACTION') path = '/transactions';
+    else if (result.source === 'WISHLIST') path = '/wishlist';
+    
+    // Navigate with react-router
+    navigate(`${path}#${result.id}`);
+    
+    // Smooth scroll if already on the page
+    setTimeout(() => {
+      const el = document.getElementById(result.id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Flash effect
+        el.classList.add('ring-4', 'ring-[var(--crimson)]', 'transition-all');
+        setTimeout(() => el.classList.remove('ring-4', 'ring-[var(--crimson)]'), 2000);
+      }
+    }, 100);
   };
 
   if (!isOpen) return null;
@@ -95,6 +122,7 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
               {results.map((result) => (
                 <div 
                   key={`${result.source}-${result.id}`} 
+                  onClick={() => handleResultClick(result)}
                   className="flex items-start gap-4 p-4 border-2 border-[var(--color-ink)] bg-white hover:bg-[var(--color-paper)] transition-colors cursor-pointer group"
                 >
                   <div className="flex flex-col flex-1 min-w-0">

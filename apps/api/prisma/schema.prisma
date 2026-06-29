@@ -175,6 +175,7 @@ model ArchiveItem {
   authorHandle  String?
   caption       String?  @db.Text
   ocrText       String?  @db.Text
+  embedHtml     String?  @db.Text
   userCategory  String?  // Folder/collection name
   
   // Postgres Full Text Search Vector

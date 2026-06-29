@@ -48,15 +48,19 @@ search.get(
         WHERE "userId" = ${MOCK_USER_ID} AND to_tsvector('english', coalesce(title, '') || ' ' || coalesce(description, '')) @@ plainto_tsquery('english', ${q})
 
         UNION ALL
-
+        
         SELECT 
-          id, 
-          caption as headline, 
-          "authorHandle" as description, 
+          a.id, 
+          a.caption as headline, 
+          a."authorHandle" as description, 
           'ARCHIVE' as source, 
-          ts_rank(to_tsvector('english', coalesce(caption, '') || ' ' || coalesce("authorHandle", '')), plainto_tsquery('english', ${q})) as rank
-        FROM "ArchiveItem"
-        WHERE "userId" = ${MOCK_USER_ID} AND to_tsvector('english', coalesce(caption, '') || ' ' || coalesce("authorHandle", '')) @@ plainto_tsquery('english', ${q})
+          ts_rank(to_tsvector('english', coalesce(a.caption, '') || ' ' || coalesce(a."authorHandle", '') || ' ' || coalesce(string_agg(t.name, ' '), '')), plainto_tsquery('english', ${q})) as rank
+        FROM "ArchiveItem" a
+        LEFT JOIN "_ArchiveTags" at ON a.id = at."A"
+        LEFT JOIN "Tag" t ON t.id = at."B"
+        WHERE a."userId" = ${MOCK_USER_ID}
+        GROUP BY a.id
+        HAVING to_tsvector('english', coalesce(a.caption, '') || ' ' || coalesce(a."authorHandle", '') || ' ' || coalesce(string_agg(t.name, ' '), '')) @@ plainto_tsquery('english', ${q})
 
         ORDER BY rank DESC
         LIMIT 50;
